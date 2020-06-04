@@ -48,13 +48,15 @@ function TVHSIS(
     βₑ = 0.0,
     ntrials = 1,
     immunizenode = false,
-    immunizeedge = false
+    immunizeedge = false,
+    node_imm_strategy,
+    he_imm_strategy,
     )
 
     per_infected_sim = Dict{Int,Array{Float64,1}}()
     per_infected_sim_trials = Dict{Int,Array{Float64,1}}()
 
-    isnothing(c) ? fname = "AAMAS/results/1year-Δ:$(Δ)-perinfected:$(per_infected)-c:median-τₕ:$(τₕ)-τᵥ:$(τᵥ)-γₕ:$(γₕ)-γᵥ:$(γᵥ)-αᵥ:$(αᵥ)-βᵥ:$(βᵥ).csv" : "$(path)$(Base.Filesystem.path_separator)$(mytitle).csv"
+    fname = isnothing(c) ? "AAMAS/results/1year-Δ:$(Δ)-perinfected:$(per_infected)-c:median-τₕ:$(τₕ)-τᵥ:$(τᵥ)-γₕ:$(γₕ)-γᵥ:$(γᵥ)-αᵥ:$(αᵥ)-βᵥ:$(βᵥ).csv" : "$(path)$(Base.Filesystem.path_separator)$(mytitle).csv"
 
     open(fname, "a") do fhandle
         write(
@@ -94,7 +96,7 @@ function TVHSIS(
             vnextstatus = zeros(Int64, 1, numnodes)
             nextistatus = zeros(Int64, 1, numnodes)
 
-            henextstatus = zeros(Int64, 1, numnodes)
+            henextstatus = zeros(Int64, 1, numhe)
             nextihestatus = zeros(Int64, 1, numhe)
 
             push!(
@@ -162,6 +164,7 @@ function TVHSIS(
                     # direct influence
                     avgdirectdegree = 0
                     for v = 1:size(h)[1]
+                        node_imm_strategy(v) && continue
                         if usersepoc[v] == 1
 
                             i = 0
@@ -190,6 +193,8 @@ function TVHSIS(
                     # undirect influence
                     #
                     for he = 1:size(h)[2]
+                        he_imm_strategy(he) && continue
+
                         if ihestatus[he] == 1
                             continue
                         end

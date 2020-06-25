@@ -1,0 +1,17 @@
+exp_id,data,label,pinf,c,Δ,δ,βd,βᵢ,βₑ,γₑ,γₐ,αₑ
+configuration1,adi,no control,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0
+configuration1,adi,5% immunized,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.05
+configuration1,adi,10% immunized,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.10
+configuration1,adi,15% immunized,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.15
+configuration1,adi,20% immunized,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.20
+configuration1,adi,25% immunized,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.25
+configuration1,adi,30% immunized,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.30
+configuration1,adi,35% immunized,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.35
+configuration2,adi,no control,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0
+configuration2,adi,5% immunized,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.05
+configuration2,adi,10% immunized,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.10
+configuration2,adi,15% immunized,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.15
+configuration2,adi,20% immunized,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.20
+configuration2,adi,25% immunized,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.25
+configuration2,adi,30% immunized,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.30
+configuration2,adi,35% immunized,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.35

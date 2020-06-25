@@ -1,0 +1,3 @@
+exp_id,data,label,pinf,c,Δ,δ,βd,βᵢ,βₑ,γₑ,γₐ,αₑ
+configuration1,adi,,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.25
+configuration2,adi,,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.25

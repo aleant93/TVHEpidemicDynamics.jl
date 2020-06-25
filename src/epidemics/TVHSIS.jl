@@ -28,25 +28,53 @@ end
 
 
 """
+TVHSIS(
+    df::DataFrame,
+    intervals::Dict{Int,Pair{DateTime,DateTime}},
+    node_index_map::Dict{String,Int},
+    he_index_map::Dict{String,Int},
+    δ::Dates.Millisecond;
+    Δ::Union{Int,TimePeriod,Nothing} = nothing,
+    vstatus::Union{Array{Int,1},Nothing} = nothing,
+    per_infected::Int = 20,
+    c::Union{Int,Nothing} = 5,
+    βd::Float64 = 0.2,
+    βₑ::Float64 = 0.06,
+    βᵢ::Float64 = 0.1,
+    γₑ::Float64 = 0.06,
+    γₐ::Float64 = 0.1,
+    niter::Int = 1,
+    output_path::Union{AbstractString,Nothing} = nothing,
+    α::Float64ₑ = 0,
+    immunize_nodes=false,
+    immunize_hes=false,
+    imm_strategy=Nothing
+)
 
+Simulation process on TVH for the SIS model, considering direct and indirect contacts
+between individuals and locations.
 """
 function TVHSIS(
         df::DataFrame,
-        intervals::Dict{Int, Pair{DateTime, DateTime}},
-        node_index_map::Dict{String, Int},
-        he_index_map::Dict{String, Int},
+        intervals::Dict{Int,Pair{DateTime,DateTime}},
+        node_index_map::Dict{String,Int},
+        he_index_map::Dict{String,Int},
         δ::Dates.Millisecond;
-        Δ::Union{Int,TimePeriod,Nothing} = nothing,
-        vstatus::Union{Array{Int, 1}, Nothing} = nothing,
-        per_infected::Int = 20,
-        c::Union{Int, Nothing} = 5,
-        βd::Float64 = 0.2,
-        βₑ::Float64 = 0.06,
-        βᵢ::Float64 = 0.1,
-        γₑ::Float64 = 0.06,
-        γₐ::Float64 = 0.1,
-        niter::Int = 1,
-        output_path::Union{AbstractString, Nothing} = nothing
+        Δ::Union{Int,TimePeriod,Nothing}=nothing,
+        vstatus::Union{Array{Int,1},Nothing}=nothing,
+        per_infected::Int=20,
+        c::Union{Int,Nothing}=5,
+        βd::Float64=0.2,
+        βₑ::Float64=0.06,
+        βᵢ::Float64=0.1,
+        γₑ::Float64=0.06,
+        γₐ::Float64=0.1,
+        niter::Int=1,
+        output_path::Union{AbstractString,Nothing}=nothing,
+        αₑ::Float64=0,
+        immunize_nodes=false,
+        immunize_hes=false,
+        imm_strategy=Nothing
 )
 
     if isnothing(output_path)
@@ -58,7 +86,7 @@ function TVHSIS(
     end
 
     # iter -> percentage of infected users per simulation step
-    to_return = Dict{Int, Array{Float64, 1}}()
+    to_return = Dict{Int,Array{Float64,1}}()
 
     open(output_path, "a") do fhandle
         write(
@@ -70,24 +98,27 @@ function TVHSIS(
         )
 
         # for randomization purposes
-        for iter=1:niter
+        for iter = 1:niter
             println("Iter $(iter)")
 
             h = nothing
             added, moved = 0, 0
 
             # percentage of infected per simulation step
-            per_infected_sim = Array{Float64, 1}()
+            per_infected_sim = Array{Float64,1}()
+
+            numnodes = length(keys(node_index_map))
+            numhes = length(keys(he_index_map))
 
             # store which users are present in the given timeframe
-            usersepoc = zeros(Int, length(keys(node_index_map)))
+            usersepoc = zeros(Int, numnodes)
 
             # evaluation of an initial vector of infected users
             # if it is not given as input 
             if isnothing(vstatus)
-                vstatus = fill(1, length(keys(node_index_map)))
-                vrand = rand(0:100, 1, length(keys(node_index_map)))
-                for i=1:length(keys(node_index_map))
+                vstatus = fill(1, numnodes)
+                vrand = rand(0:100, 1, numnodes)
+                for i = 1:numnodes
                     if per_infected  <= vrand[i]
                         vstatus[i] = 0
                     end
@@ -95,22 +126,22 @@ function TVHSIS(
             end
 
             # Initially, all location are safe
-            hestatus = zeros(Int, length(keys(he_index_map)))
+            hestatus = zeros(Int, numhes)
 
             # Storing the new status of each vertex and hyperedge
             vnextstatus = copy(vstatus)
             henextstatus = copy(hestatus)
 
-            #! check after immunization
+            # ! check after immunization
             push!(per_infected_sim, sum(vstatus) / length(vstatus))
 
-            #immunization
+            # immunization
             # TODO immunization policies
-            istatus = rand(0:0, 1, length(keys(node_index_map)))
-            irand = rand(0:100, 1, length(keys(node_index_map)))
+            istatus = zeros(Int, numnodes)
+            irand = rand(0:100, 1, numnodes)
 
-            ihestatus = rand(0:0, 1, length(keys(he_index_map)))
-            iherand = rand(0:100, 1, length(keys(he_index_map)))
+            ihestatus = zeros(Int, numhes)
+            iherand = rand(0:100, 1, numhes)
 
             nextistatus = copy(istatus)
             nextihestatus = copy(ihestatus)
@@ -118,7 +149,7 @@ function TVHSIS(
             ################
             # SIMULATION
             ################
-            for t=1:length(intervals)
+            for t = 1:length(intervals)
                 h, added, moved = generatehg(
                                     h, 
                                     df, 
@@ -130,18 +161,31 @@ function TVHSIS(
                                     t  
                                 )   
 
-                isnothing(h) && continue
+                if t == 30
+                    if immunize_nodes
+                        current_nodes = filter(node->usersepoc[node] == 1, 1:nhv(h))
+                        nodes_to_immunize = imm_strategy(h, αₑ, current_nodes)
+                        map(node->vnextstatus[node] = 0, nodes_to_immunize)
+                        map(node->nextistatus[node] = 1, nodes_to_immunize)
+                    end
+                    if immunize_hes
+                        current_hes = filter(he->length(getvertices(h,he)) >= 1, 1:nhe(h))
+                        hes_to_immunize = imm_strategy(dual(h), αₑ, current_hes)
+                        map(he->henextstatus[he] = 0, hes_to_immunize)
+                        map(he->nextihestatus[he] = 1, hes_to_immunize)
+                    end
+                end
 
                 # Estimation of the parameter c
                 # based on the distribution
                 # of the hyperedge size
                 if isnothing(c)
-                    dist = Array{Int, 1}()
-
-                    for he=1:nhe(h)
+                    dist = Array{Int,1}()
+                    
+                    for he = 1:nhe(h)
                         push!(dist, length(getvertices(h, he)))
                     end
-
+                    
                     c = median(dist)
                     println(t, " -- ", c)
                 end
@@ -154,14 +198,14 @@ function TVHSIS(
 
                 # hyperedges average size 
                 avg_he_size = .0
-                for he=1:nhe(h)
+                for he = 1:nhe(h)
                     avg_he_size += length(getvertices(h, he))
                 end
                 avg_he_size /= nhe(h)
 
                 # nodes average degree
                 avg_degree = .0
-                for v=1:nhv(h)
+                for v = 1:nhv(h)
                     avg_degree += length(gethyperedges(h, v))
                 end
                 avg_degree /= nhv(h)
@@ -169,7 +213,7 @@ function TVHSIS(
                 # number of infected locations with
                 # at least two users
                 infected_locations = 0
-                for he=1:nhe(h)
+                for he = 1:nhe(h)
                     if hestatus[he] == 1 && length(getvertices(h, he)) > 1
                         infected_locations += 1
                     end
@@ -182,20 +226,20 @@ function TVHSIS(
                 #
                 # PHASE 1 - Agent-to-Environment
                 #
-                for he=1:nhe(h)
+                for he = 1:nhe(h)
                     # If the location is immunized,
                     # it cannot spread the infection anymore
-                    ihestatus[he] == 1 && continue
+                    ihestatus[he] == 1 && rand(1:10) <= 8 && continue
 
                     # If the location has at least two users
                     # and it is not infected, it may become contamined.
                     if length(getvertices(h, he)) > 1 && hestatus[he] == 0
                         i = infected(h, he, vstatus, istatus)
-                        if rand(1)[1] <  1 - ℯ ^ - (βₑ * f(i, c))
+                        if rand(1)[1] <  1 - ℯ^- (βₑ * f(i, c))
                             # the location is contaminated
                             henextstatus[he] = 1
                         end
-                    elseif rand(1)[1] <  1 - ℯ ^ - γₑ
+                    elseif rand(1)[1] <  1 - ℯ^- γₑ
                         # the location has been sanitized
                         henextstatus[he] = 0
                     end
@@ -205,7 +249,9 @@ function TVHSIS(
                 # PHASE 2 - Agent-to-Agent
                 #
                 avg_direct_contacts = 0
-                for v=1:nhv(h)
+                for v = 1:nhv(h)
+                    istatus[v] == 1 && continue
+
                     # if the user is present in the current timeframe
                     if usersepoc[v] == 1
                         i = 0
@@ -226,7 +272,7 @@ function TVHSIS(
                         end
                         # a user becomes infected according to
                         # the following probbaility
-                        if vstatus[v] == 0 && rand(1)[1] < 1 - ℯ ^ - (βd * i)
+                        if vstatus[v] == 0 && rand(1)[1] < 1 - ℯ^- (βd * i)
                             vnextstatus[v] = 1
                         end
                     end
@@ -238,7 +284,7 @@ function TVHSIS(
                 #
                 # PHASE 3 - Environment-to-Agent
                 #
-                for v=1:nhv(h)
+                for v = 1:nhv(h)
                     istatus[v] == 1 && continue
 
                     # if the user is present in the current timeframe
@@ -254,10 +300,10 @@ function TVHSIS(
                                     end
                                 end
                             end
-                            if rand(1)[1] < 1 - ℯ ^ -(βᵢ * f(i, c))
+                            if rand(1)[1] < 1 - ℯ^-(βᵢ * f(i, c))
                                 vnextstatus[v] = 1
                             end
-                        elseif rand(1)[1] < 1 - ℯ ^ - γₐ 
+                        elseif rand(1)[1] < 1 - ℯ^- γₐ 
                                 # the user spontaneously returns healthy
                                 vnextstatus[v] = 0
                         end
@@ -270,18 +316,18 @@ function TVHSIS(
                 hestatus = copy(henextstatus)
                 ihestatus = copy(nextihestatus)
 
-                push!(per_infected_sim, sum(vstatus) / (length(vstatus) - sum(istatus)))
+                push!(per_infected_sim, sum(vstatus) / length(vstatus))
 
                 to_write = string(
                     "$(t),$(Δ),$(δ),$(c),$(per_infected),$(βd),$(βₑ),$(βᵢ),$(γₑ),$(γₐ),",
                     "$(avg_he_size),$(avg_degree),$(avg_direct_contacts),$(added),$(moved),",
-                    "$(sum(vstatus)/length(vstatus)),$(sum(hestatus)/length(hestatus))\n"
+                    "$(sum(vstatus) / length(vstatus)),$(sum(hestatus) / length(hestatus))\n"
                     )
 
                 write(fhandle, to_write)
             end
 
-            push!(to_return, iter=>per_infected_sim)
+            push!(to_return, iter => per_infected_sim)
         end
     end
 

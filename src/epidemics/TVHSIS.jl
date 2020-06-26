@@ -163,14 +163,12 @@ function TVHSIS(
 
                 if t == 30
                     if immunize_nodes
-                        current_nodes = filter(node->usersepoc[node] == 1, 1:nhv(h))
-                        nodes_to_immunize = imm_strategy(h, αₑ, current_nodes)
+                        nodes_to_immunize = imm_strategy(h, αₑ)
                         map(node->vnextstatus[node] = 0, nodes_to_immunize)
                         map(node->nextistatus[node] = 1, nodes_to_immunize)
                     end
                     if immunize_hes
-                        current_hes = filter(he->length(getvertices(h,he)) >= 1, 1:nhe(h))
-                        hes_to_immunize = imm_strategy(dual(h), αₑ, current_hes)
+                        hes_to_immunize = imm_strategy(dual(h), αₑ)
                         map(he->henextstatus[he] = 0, hes_to_immunize)
                         map(he->nextihestatus[he] = 1, hes_to_immunize)
                     end
@@ -229,7 +227,8 @@ function TVHSIS(
                 for he = 1:nhe(h)
                     # If the location is immunized,
                     # it cannot spread the infection anymore
-                    ihestatus[he] == 1 && rand(1:10) <= 8 && continue
+                    # ihestatus[he] == 1 && rand(1:10) <= 8 && continue
+                    ihestatus[he] == 1 && continue
 
                     # If the location has at least two users
                     # and it is not infected, it may become contamined.

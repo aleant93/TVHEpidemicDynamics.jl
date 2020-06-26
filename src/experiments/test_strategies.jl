@@ -9,14 +9,14 @@ using Statistics
 ########################
 
 # Simulation parameters
-fparams = "/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/configs/immunization/imm_perc.csv"
+fparams = "/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/configs/epidemic_control/imm_perc.csv"
 
 paramsdf = CSV.read(
             fparams;
             copycols=true,
             header=[:exp_id, :data, :label, :per_infected, :c,  :Δ, :δ ,:βd, :βᵢ, :βₑ, :γₑ, :γₐ, :αₑ],
             datarow=2
-        )
+            )
 
 # just a trick to group together
 # all experiments to show in the same plot
@@ -58,124 +58,97 @@ df, intervals, node_index_map, he_index_map =
 #########################
 # Simulation
 ########################
-simulation_data = Dict{String,Array{Pair{String,Array{Float64,1}},1}}()
+targets = ["nodes", "hes"]
+strategies = [uniform, centrality, contacts_based, acquaintance]
 
-for testtype in keys(test_data)
-    for test in get(test_data, testtype, nothing)
-        to_print = string(
-            "Experiment code = $(test[:exp_id]) | Configuration label = $(test[:label]) | Perc infected = $(test[:per_infected]) | ",
-            "Δ = $(test[:Δ]) | δ = $(test[:δ]) | βd = $(test[:βd]) | βᵢ = $(test[:βᵢ]) | βₑ = $(test[:βₑ]) | γₑ = $(test[:γₑ]) | γₐ = $(test[:γₐ])",
-            "| αₑ = $(test[:αₑ])"
-        )
-        println(to_print)
-        
-        strategies = [uniform, contacts_based, acquaintance]
-        for s in strategies
-            SIS_per_infected_sim =
-                TVHSIS(
-                    df,
-                    intervals,
-                    node_index_map,
-                    he_index_map,
-                    convert(Dates.Millisecond, Dates.Minute(test[:δ]));
-                    Δ=test[:Δ],
-                    c=5, 
-                    βd=test[:βd],
-                    βᵢ=test[:βᵢ], 
-                    βₑ=test[:βₑ], 
-                    γₑ=test[:γₑ], 
-                    γₐ=test[:γₐ],
-                    αₑ=test[:αₑ],
-                    niter=1,
-                    output_path="/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/immunization/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv",
-                    immunize_nodes=true,
-                    immunize_hes=false,
-                    imm_strategy=s
-                    )
+for target in targets
+    for strategy in strategies
 
-            # get the average over all iterations 
-            infected_distribution = mean(collect(values(SIS_per_infected_sim)))
+        simulation_data = Dict{String,Array{Pair{String,Array{Float64,1}},1}}()
 
-            push!(
-            get!(simulation_data, testtype, Array{Dict{String,Array{Float64,1}},1}()),
-            "nodes " * string(s) => infected_distribution
-        ) 
+        for testtype in keys(test_data)
+            for test in get(test_data, testtype, nothing)
+                to_print = string(
+                    "Experiment code = $(test[:exp_id]) | Configuration label = $(test[:label]) | Perc infected = $(test[:per_infected]) | ",
+                    "Δ = $(test[:Δ]) | δ = $(test[:δ]) | βd = $(test[:βd]) | βᵢ = $(test[:βᵢ]) | βₑ = $(test[:βₑ]) | γₑ = $(test[:γₑ]) | γₐ = $(test[:γₐ])",
+                    "| αₑ = $(test[:αₑ])"
+                )
+                println(to_print)
+
+                SIS_per_infected_sim =
+                    TVHSIS(
+                        df,
+                        intervals,
+                        node_index_map,
+                        he_index_map,
+                        convert(Dates.Millisecond, Dates.Minute(test[:δ]));
+                        Δ=test[:Δ],
+                        c=5, 
+                        βd=test[:βd],
+                        βᵢ=test[:βᵢ], 
+                        βₑ=test[:βₑ], 
+                        γₑ=test[:γₑ], 
+                        γₐ=test[:γₐ],
+                        αₑ=test[:αₑ],
+                        niter=1,
+                        output_path="/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/$(string(strategy))/$target/csv/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv",
+                        immunize_nodes=(target == "nodes"),
+                        immunize_hes=(target == "hes"),
+                        imm_strategy=strategy
+                        )
+
+                # get the average over all iterations 
+                infected_distribution = mean(collect(values(SIS_per_infected_sim)))
+
+                push!(
+                    get!(simulation_data, testtype, Array{Dict{String,Array{Float64,1}},1}()),
+                    test[:label] => infected_distribution
+                ) 
+            end
         end
 
-        for s in strategies
-            SIS_per_infected_sim =
-                TVHSIS(
-                    df,
-                    intervals,
-                    node_index_map,
-                    he_index_map,
-                    convert(Dates.Millisecond, Dates.Minute(test[:δ]));
-                    Δ=test[:Δ],
-                    c=5, 
-                    βd=test[:βd],
-                    βᵢ=test[:βᵢ], 
-                    βₑ=test[:βₑ], 
-                    γₑ=test[:γₑ], 
-                    γₐ=test[:γₐ],
-                    αₑ=test[:αₑ],
-                    niter=1,
-                    output_path="/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/immunization/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv",
-                    immunize_nodes=false,
-                    immunize_hes=true,
-                    imm_strategy=s
-                    )
-        
-            # get the average over all iterations 
-            infected_distribution = mean(collect(values(SIS_per_infected_sim)))
-        
-            push!(
-            get!(simulation_data, testtype, Array{Dict{String,Array{Float64,1}},1}()),
-            "hes " * string(s) => infected_distribution
-            ) 
-        end
-    end
-end
 
+        #########################
+        # Plotting infected ditribution
+        ########################
+        linestyles = ["solid", "dashed", "dashdot", "dotted"]
+        markers = ["", "", "", "", "x", "+"]
 
-#########################
-# Plotting infected ditribution
-########################
-linestyles = ["solid", "dashed", "dashdot", "dotted"]
-markers = ["", "", "", "", "x", "+"]
-
-for test_type in keys(simulation_data)
-    linestyle = 1
-    marker = 1
-    labels = Array{String,1}()
-    mytitle = "$(test_type)_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).png"
-
-    clf()
-    figure(figsize=(7, 4))
-
-    for exp in get!(simulation_data, test_type, Array{Float64,1}())        
-        ylim(bottom=0.0, top=0.6)
-        plot(exp.second, linestyle=linestyles[linestyle], marker=markers[marker], markevery=10, markersize=6.5)
-
-        ylabel("Infected nodes in %", fontweight="semibold", fontsize="x-large", labelpad=10)
-        xlabel("Time intervals", fontweight="semibold", labelpad=10, fontsize="x-large")
-
-        tick_params(labelsize="large")
-
-        push!(labels, exp.first)
-
-        linestyle = (linestyle + 1) % (length(linestyles) + 1)
-        marker = (marker + 1) % (length(markers) + 1)
-
-        if linestyle == 0
+        for test_type in keys(simulation_data)
             linestyle = 1
-        end
-        if marker == 0
             marker = 1
-        end
-    end
-    legend(labels, fontsize="large", ncol=2)
-    plt.tight_layout(.5)
-    savefig("/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/immunization/$(mytitle)")
-end
+            labels = Array{String,1}()
+            mytitle = "$(test_type)_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).png"
 
-gcf()
+            clf()
+            figure(figsize=(7, 4))
+
+            for exp in get!(simulation_data, test_type, Array{Float64,1}())        
+                ylim(bottom=0.0, top=0.6)
+                plot(exp.second, linestyle=linestyles[linestyle], marker=markers[marker], markevery=10, markersize=6.5)
+
+                ylabel("Infected nodes in %", fontweight="semibold", fontsize="x-large", labelpad=10)
+                xlabel("Time intervals", fontweight="semibold", labelpad=10, fontsize="x-large")
+
+                tick_params(labelsize="large")
+
+                push!(labels, exp.first)
+
+                linestyle = (linestyle + 1) % (length(linestyles) + 1)
+                marker = (marker + 1) % (length(markers) + 1)
+
+                if linestyle == 0
+                    linestyle = 1
+                end
+                if marker == 0
+                    marker = 1
+                end
+            end
+            legend(labels, fontsize="large", ncol=2)
+            plt.tight_layout(.5)
+            savefig("/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/$(string(strategy))/$target/plot/$(mytitle)")
+        end
+
+        gcf()
+    end
+end

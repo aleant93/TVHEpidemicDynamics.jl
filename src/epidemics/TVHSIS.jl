@@ -45,7 +45,7 @@ TVHSIS(
     γₐ::Float64 = 0.1,
     niter::Int = 1,
     output_path::Union{AbstractString,Nothing} = nothing,
-    α::Float64ₑ = 0,
+    α::Float64ₑ = 0.0,
     immunize_nodes=false,
     immunize_hes=false,
     imm_strategy=Nothing
@@ -71,7 +71,7 @@ function TVHSIS(
         γₐ::Float64=0.1,
         niter::Int=1,
         output_path::Union{AbstractString,Nothing}=nothing,
-        αₑ::Float64=0,
+        αₑ::Float64=0.0,
         immunize_nodes=false,
         immunize_hes=false,
         imm_strategy=Nothing
@@ -163,14 +163,18 @@ function TVHSIS(
 
                 if t == 30
                     if immunize_nodes
-                        nodes_to_immunize = imm_strategy(h, αₑ)
-                        map(node->vnextstatus[node] = 0, nodes_to_immunize)
-                        map(node->nextistatus[node] = 1, nodes_to_immunize)
+                        # nodes_to_immunize = imm_strategy(h, αₑ)
+                        nodes_to_immunize = imm_strategy(h)
+                        limit = trunc(Int, length(nodes_to_immunize) * αₑ)
+                        map(node->vnextstatus[node] = 0, nodes_to_immunize[1:limit])
+                        map(node->nextistatus[node] = 1, nodes_to_immunize[1:limit])
                     end
                     if immunize_hes
-                        hes_to_immunize = imm_strategy(dual(h), αₑ)
-                        map(he->henextstatus[he] = 0, hes_to_immunize)
-                        map(he->nextihestatus[he] = 1, hes_to_immunize)
+                        # hes_to_immunize = imm_strategy(dual(h), αₑ)
+                        hes_to_immunize = imm_strategy(dual(h))
+                        limit = trunc(Int, length(hes_to_immunize) * αₑ)
+                        map(he->henextstatus[he] = 0, hes_to_immunize[1:limit])
+                        map(he->nextihestatus[he] = 1, hes_to_immunize[1:limit])
                     end
                 end
 
@@ -227,8 +231,8 @@ function TVHSIS(
                 for he = 1:nhe(h)
                     # If the location is immunized,
                     # it cannot spread the infection anymore
-                    # ihestatus[he] == 1 && rand(1:10) <= 8 && continue
-                    ihestatus[he] == 1 && continue
+                    ihestatus[he] == 1 && rand(1:10) <= 8 && continue
+                    # ihestatus[he] == 1 && continue
 
                     # If the location has at least two users
                     # and it is not infected, it may become contamined.

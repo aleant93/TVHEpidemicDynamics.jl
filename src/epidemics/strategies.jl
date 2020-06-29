@@ -1,18 +1,21 @@
 """
+    uniform(h)
+
 Select a random set of nodes to immunize
 """
-function uniform(h, perc)
+function uniform(h)
     n = nhv(h)
     Random.seed!(0)
     random_nodes = shuffle(1:n)
-    limit = trunc(Int, n * perc)
-    random_nodes[1:limit]
+    random_nodes
 end
 
 """
+    contacts_based(h)
+
 Select the nodes with the highest contacts number to immunize
 """
-function contacts_based(h, perc)
+function contacts_based(h)
     # Count nodes in the same hyperedges of `v`
     function countcontacts(h, v)
         contacts = []
@@ -23,24 +26,23 @@ function contacts_based(h, perc)
         length(contacts)
     end
 
-    n = nhv(h)
-    sorted = sort(1:n, by=x->countcontacts(h, x), rev=true)
-    limit = trunc(Int, n * perc)
-    sorted[1:limit]
+    sorted = sort(1:nhv(h), by=x -> countcontacts(h, x), rev=true)
+    sorted
 end
 
 """
+    centrality(h)
+
 Select the nodes with the highest centrality to immunize
 """
-function centrality(h, perc)
+function centrality(h)
     centrality_dict = Dict{Int,Int}()
     n = nhv(h)
-    map(node->centrality_dict[node] = 0, 1:n)
-    # for i = 1:n
-    #     map(node->centrality_dict[random_walk(h, node)] += 1, 1:nhv(h))
-    # end
-    for i = 1:n
+    map(node -> centrality_dict[node] = 0, 1:n)
+    rounds = 10
+    for i = 1:rounds
         for node = 1:n
+            # A node may not be in no hyperedge
             try
                 centrality_dict[random_walk(h, node)] += 1
             catch
@@ -48,18 +50,18 @@ function centrality(h, perc)
             end
         end
     end
-    sorted = sort(collect(centrality_dict), by=x->x[2], rev=true)
-    print(sorted)
-    limit = trunc(Int, n * perc)
-    to_immunize = map(x->x[1], sorted[1:limit])
+    sorted = sort(collect(centrality_dict), by=x -> x[2], rev=true)
+    to_immunize = map(x -> x[1], sorted)
     to_immunize
 end
 
 """
+    acquaintance(h)
+
 Select a fraction of nodes with at least a neighbour,
 choose one of their neighbours to immunize
 """
-function acquaintance(h, perc)
+function acquaintance(h)
     function hasNeighbours(h, node)
         for he in keys(gethyperedges(h, node))
             if length(getvertices(h, he)) >= 2
@@ -69,33 +71,21 @@ function acquaintance(h, perc)
         return false
     end
 
-    nodesWithNeighbours = filter(node->hasNeighbours(h, node), 1:nhv(h))
-    limit = trunc(Int, length(nodesWithNeighbours) * perc)
-    if limit == 0
-        return []
-    end
+    # select nodes with at least a neighbour
+    nodesWithNeighbours = filter(node -> hasNeighbours(h, node), 1:nhv(h))
 
-    # Search in a node hyperedges
     to_immunize = []
-    i = 1
     Random.seed!(0)
-    while length(to_immunize) <= limit && i <= length(nodesWithNeighbours)
-        current = nodesWithNeighbours[i]
-        hyperedges = collect(keys(gethyperedges(h, current)))
-        j = 1
-        toInsert = true
-        # a neighbour not already in `to_immmunize`, if any
-        while (j <= length(hyperedges) && toInsert)
-            neighbours = collect(keys(getvertices(h, hyperedges[j])))
-            random_neighbours = shuffle(collect(neighbours))
-            filtered = filter(neighbour->!(neighbour in to_immunize), random_neighbours)
-            if (!isempty(filtered))
-                push!(to_immunize, filtered[1])
-                toInsert = false
-            end
-            j += 1
+    for node in nodesWithNeighbours
+        hyperedges = collect(keys(gethyperedges(h, node)))
+        neighbours = []
+        for he in hyperedges
+            neighbours = union(neighbours, collect(keys(getvertices(h, he))))
         end
-        i += 1
+        filtered = filter(neighbour -> !(neighbour in to_immunize), neighbours)
+        if (!isempty(filtered))
+            push!(to_immunize, filtered[rand(1:length(filtered))])
+        end
     end
 
     to_immunize

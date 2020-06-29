@@ -85,7 +85,7 @@ for testtype in keys(test_data)
                         γₐ=test[:γₐ],
                         αₑ=test[:αₑ],
                         niter=1,
-                        output_path="/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv"
+                        output_path="/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/nodes_vs_hes/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv"
                         )
 
         # get the average over all iterations 
@@ -114,7 +114,7 @@ for testtype in keys(test_data)
                     γₐ=test[:γₐ],
                     αₑ=test[:αₑ],
                     niter=1,
-                    output_path="/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/immunization/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv",
+                    output_path="/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/nodes_vs_hes/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv",
                     immunize_nodes=true,
                     immunize_hes=false,
                     imm_strategy=s
@@ -126,7 +126,7 @@ for testtype in keys(test_data)
             push!(
                 get!(simulation_data, testtype, Array{Dict{String,Array{Float64,1}},1}()),
                 # "nodes " * string(s) => infected_distribution
-                string(s) => infected_distribution
+                "nodes " * string(s) => infected_distribution
             ) 
 
             SIS_per_infected_sim =
@@ -145,7 +145,7 @@ for testtype in keys(test_data)
                     γₐ=test[:γₐ],
                     αₑ=test[:αₑ],
                     niter=1,
-                    output_path="/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/immunization/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv",
+                    output_path="/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/nodes_vs_hes/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv",
                     immunize_nodes=false,
                     immunize_hes=true,
                     imm_strategy=s
@@ -157,7 +157,7 @@ for testtype in keys(test_data)
             push!(
                 get!(simulation_data, testtype, Array{Dict{String,Array{Float64,1}},1}()),
                 # "hes " * string(s) => infected_distribution
-                string(s) => infected_distribution
+                "hes " * string(s) => infected_distribution
             ) 
 
         end
@@ -204,7 +204,7 @@ for test_type in keys(simulation_data)
     end
     legend(labels, fontsize="large", ncol=2)
     plt.tight_layout(.5)
-    savefig("/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/$(mytitle)")
+    savefig("/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/nodes_vs_hes/$(mytitle)")
 end
 
 gcf()

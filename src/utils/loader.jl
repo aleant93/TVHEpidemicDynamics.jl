@@ -22,19 +22,19 @@ function generate_model_data(
     fname::AbstractString,
     columns::AbstractVector,
     dateformat::AbstractString;
-    Δ::Millisecond = Dates.Millisecond(14400000),
-    δ::Millisecond = Dates.Millisecond(1000),
-    limit::Int = typemax(Int),
-    mindate::Union{DateTime,Nothing} = nothing,
-    maxdate::Union{DateTime,Nothing} = nothing
+    Δ::Millisecond=Dates.Millisecond(14400000),
+    δ::Millisecond=Dates.Millisecond(1000),
+    limit::Int=typemax(Int),
+    mindate::Union{DateTime,Nothing}=nothing,
+    maxdate::Union{DateTime,Nothing}=nothing
 )
 
     df = CSV.read(
         fname;
-        copycols = true,
-        header = columns,
-        dateformat = dateformat,
-        limit = limit
+        copycols=true,
+        header=columns,
+        dateformat=dateformat,
+        limit=limit
     )
 
     # remove all rows without a timestamp
@@ -43,7 +43,7 @@ function generate_model_data(
     # filter out all the rows not in the 
     # timeframe to consider
     df = filter(
-        r-> (isnothing(mindate) || r.UTCtime >= mindate) &&
+        r->(isnothing(mindate) || r.UTCtime >= mindate) &&
             (isnothing(maxdate) || r.UTCtime <= maxdate), 
             df
     )
@@ -63,7 +63,7 @@ function generate_model_data(
     maxtime = maximum(df[!, :UTCtime])
 
     nintervals = ceil(Int, (maxtime - mintime) / Δ)
-    intervals = Dict{Int, Pair{DateTime, DateTime}}()
+    intervals = Dict{Int,Pair{DateTime,DateTime}}()
 
     # build timeframes
     for i = 1:nintervals
@@ -82,7 +82,7 @@ function generate_model_data(
     end
 
     # mapping user -> node
-    node_index_map = Dict{String, Int}()
+    node_index_map = Dict{String,Int}()
     index = 1
 
     # add vertices
@@ -95,17 +95,19 @@ function generate_model_data(
     end
 
     # mapping place -> he
-    he_index_map = Dict{String, Int}()
+    he_index_map = Dict{String,Int}()
     index = 1
 
+    tags = Array{String,1}()
     # add he
     for place in eachrow(places)
         placeid = string(place[:venueid])
         if !haskey(he_index_map, placeid)
             push!(he_index_map, placeid => index)
+            push!(tags, place[:catname])
             index += 1
         end
     end
 
-    df, intervals, node_index_map, he_index_map
+    df, intervals, node_index_map, he_index_map, tags
 end

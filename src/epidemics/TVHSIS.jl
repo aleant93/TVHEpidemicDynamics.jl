@@ -146,16 +146,16 @@ function TVHSIS(
             nextistatus = copy(istatus)
             nextihestatus = copy(ihestatus)
 
-            # A random set of nodes will start using the app
-            Random.seed!(0)
-            random_nodes = shuffle(1:numnodes)
-            limit = trunc(Int, length(random_nodes) * αₑ)
-            random_nodes = random_nodes[1:limit]
-            # Keep track of the infected that a node may have been in contact with
-            infected_contacts = Dict{Int,Array{Int,1}}()
-            map(node -> infected_contacts[node] = [], random_nodes)
-            # Nodes that can't spread the infection but can recover
-            nodes_in_quarantine = Array{Int,1}()
+            # # A random set of nodes will start using the app
+            # Random.seed!(0)
+            # random_nodes = shuffle(1:numnodes)
+            # limit = trunc(Int, length(random_nodes) * αₑ)
+            # random_nodes = random_nodes[1:limit]
+            # # Keep track of the infected that a node may have been in contact with
+            # infected_contacts = Dict{Int,Array{Int,1}}()
+            # map(node -> infected_contacts[node] = [], random_nodes)
+            # # Nodes that can't spread the infection but can recover
+            # nodes_in_quarantine = Array{Int,1}()
 
             ################
             # SIMULATION
@@ -172,23 +172,23 @@ function TVHSIS(
                                     t  
                                 )   
 
-                if t >= 30
-                    # Find the infected who have been in contact with `node`
-                    for node in random_nodes
-                        neighbours = []
-                        hyperedges = collect(keys(gethyperedges(h, node)))
-                        for he in hyperedges
-                            neighbours = union(neighbours, collect(keys(getvertices(h, he))))
-                        end
-                        infected_neighoburs = filter(neighbour -> vstatus[neighbour] == 1, neighbours)
-                        infected_contacts[node] = union(infected_contacts[node], infected_neighoburs)
-                        # Decide to quarantine
-                        if rand(1)[1]  < 1 - ℯ^(-0.5 * length(infected_contacts[node]))
-                            push!(nodes_in_quarantine, node)
-                            continue
-                        end
-                    end
-                end
+                # if t >= 30
+                #     # Find the infected who have been in contact with `node`
+                #     for node in random_nodes
+                #         neighbours = []
+                #         hyperedges = collect(keys(gethyperedges(h, node)))
+                #         for he in hyperedges
+                #             neighbours = union(neighbours, collect(keys(getvertices(h, he))))
+                #         end
+                #         infected_neighoburs = filter(neighbour -> vstatus[neighbour] == 1, neighbours)
+                #         infected_contacts[node] = union(infected_contacts[node], infected_neighoburs)
+                #         # Decide to quarantine
+                #         if rand(1)[1]  < 1 - ℯ^(-0.5 * length(infected_contacts[node]))
+                #             push!(nodes_in_quarantine, node)
+                #             continue
+                #         end
+                #     end
+                # end
 
                 if t == 30 && !(isnothing(imm_strategy))
                     if immunize_nodes
@@ -258,15 +258,15 @@ function TVHSIS(
                 for he = 1:nhe(h)
                     # If the location is immunized,
                     # it cannot spread the infection anymore
-                    # ihestatus[he] == 1 && rand(1:10) <= 8 && continue
-                    ihestatus[he] == 1 && continue
+                    ihestatus[he] == 1 && rand(1:10) <= 8 && continue
+                    # ihestatus[he] == 1 && continue
 
                     # If the location has at least two users
                     # and it is not infected, it may become contamined.
-                    in_quarantine = filter(node -> node in nodes_in_quarantine, collect(keys(getvertices(h, he))))
-                    presents = length(getvertices(h, he)) - length(in_quarantine)
-                    if presents > 1 && hestatus[he] == 0
-                    # if length(getvertices(h, he)) > 1 && hestatus[he] == 0
+                    # in_quarantine = filter(node -> node in nodes_in_quarantine, collect(keys(getvertices(h, he))))
+                    # presents = length(getvertices(h, he)) - length(in_quarantine)
+                    # if presents > 1 && hestatus[he] == 0
+                    if length(getvertices(h, he)) > 1 && hestatus[he] == 0
                         i = infected(h, he, vstatus, istatus)
                         if rand(1)[1] <  1 - ℯ^- (βₑ * f(i, c))
                             # the location is contaminated
@@ -327,8 +327,8 @@ function TVHSIS(
                     if usersepoc[v] == 1
 
                         # if the user is healthy
-                        # if vstatus[v] == 0
-                        if vstatus[v] == 0 && !(v in nodes_in_quarantine)
+                        if vstatus[v] == 0
+                        # if vstatus[v] == 0 && !(v in nodes_in_quarantine)
                             i = 0
                             for he in gethyperedges(h, v)
                                 if length(getvertices(h, he.first)) > 1

@@ -1,11 +1,11 @@
 exp_id,data,label,pinf,c,Δ,δ,βd,βᵢ,βₑ,γₑ,γₐ,αₑ
-configuration1,adi,no control,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0
+configuration1,adi,no control,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.0
 configuration1,adi,7% immunized,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.07
 configuration1,adi,14% immunized,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.14
 configuration1,adi,21% immunized,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.21
 configuration1,adi,28% immunized,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.28
 configuration1,adi,35% immunized,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.35
-configuration2,adi,no control,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0
+configuration2,adi,no control,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.0
 configuration2,adi,7% immunized,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.07
 configuration2,adi,14% immunized,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.14
 configuration2,adi,21% immunized,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.21

@@ -48,6 +48,7 @@ function generate_model_data(
 
     # remove all rows without a timestamp
     df = dropmissing(df, timestamp)
+    df = dropmissing(df)
 
     # filter out all the rows not in the
     # timeframe to consider

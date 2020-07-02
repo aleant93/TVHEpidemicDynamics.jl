@@ -6,8 +6,7 @@ using PyPlot
 using Statistics
 
 """
- Studying check-in weekly distribution
- within the same place, considering only direct contact.
+    Studying weekly direct contacts distribution within the same place.
 """
 
 dataset = "data/dataset_TSMC2014_TKY.txt"
@@ -63,9 +62,8 @@ maxweek = get(intervals, sortedcheckinsperinterval[1].first, nothing)
 
 
 """
- Studying check-in distribution
- within the most crowded week,
- considering only direct contact.
+ Studying direct contacts distribution
+ within the most crowded week.
 
  Here, we will use a discretization interval of δₕ = 4 hours.
 """
@@ -81,18 +79,18 @@ nintervals_δ = ceil(Int,(maxweek.second - maxweek.first)/δₘ)
 intervals_δ = Dict{Int, Pair{DateTime, DateTime}}()
 evaluateintervals!(maxweek.first, maxweek.second, intervals_δ, nintervals_δ, δₘ)
 
-# Evaluatin checkin distribution within each interval.
+# Evaluatin direct contacts distribution within each interval.
 distancewithinintervals = Dict{Int, Array{Any, 1}}()
-evaluatedistance!(intervals_δ, distancewithinintervals, df)
+evaluate_direct_contacts_distribution!(intervals_δ, distancewithinintervals, df, convert(Dates.Millisecond, Dates.Hour(1)))
 
 
 
 """
-    Plot checkin distribution within 7th-13th May.
+    Plot direct contacts distribution within 7th-13th May.
 """
 clf()
 
-fig = plt.figure(figsize=(10, 5))
+fig = plt.figure(figsize=(10, 4))
 ax = fig.add_subplot(111)
 
 ylabel("Time in Seconds", fontweight="semibold")
@@ -114,12 +112,13 @@ gcf()
 
 plt.tight_layout(.5)
 
-savefig("src/data_distribution/plots/checkin_distribution.png")
+savefig("src/data_distribution/plots/direct_contacts_distribution.png")
 
 
 
 """
-    Plot checkin distribution within 7th-13th May.
+    test:
+    Plot direct contacts distribution within 7th-13th May.
 """
 toplot = Vector{Array{Any,1}}()
 cut = 0
@@ -134,30 +133,41 @@ for t=1:length(keys(distancewithinintervals))
     #     cut = quantile(values, 0.9)
     # end
 
-    # try
-    #     println("$(t) -- $(cut) -- $(median(values)) -- $(length(values[values.<cut])/length(values)) -- $(length(values[values.>cut])/length(values))")
-    # catch ArgumentError
-    #     println("$(t) -- 60 -- NaN -- $(length(values[values.<cut])/length(values)) -- $(length(values[values.>cut])/length(values))")
-    # end
+    try
+        println("$(t) -- $(cut) -- $(median(values)) -- $(length(values[values.<cut])/length(values)) -- $(length(values[values.>cut])/length(values))")
+    catch ArgumentError
+        println("$(t) -- 60 -- NaN -- $(length(values[values.<cut])/length(values)) -- $(length(values[values.>cut])/length(values))")
+    end
 
     #filter!(x -> x < cut, values)
     push!(toplot, values)
 end
 
+
 clf()
-
-fig = plt.figure(figsize=(12, 5))
-ax = fig.add_subplot(111)
-ax.boxplot(toplot)
-
-xlabels = ["7 May", "04", "08", "12", "16", "20", "8 May", "04", "08", "12", "16", "20", "9 May", "04", "08", "12", "16", "20", "10 May", "04", "08", "12", "16", "20", "11 May", "04", "08", "12", "16", "20", "12 May", "04", "08", "12", "16", "20", "13 May", "04", "08", "12", "16", "20"]
-xticks(1:42, xlabels, rotation=80)
-
-ylabel("Time in Seconds")
-xlabel("Time Intervals")
-
+boxplot(toplot)
 gcf()
+savefig("src/AAMAS/plots/res/directcontacts1.png")
 
-plt.tight_layout(.5)
 
-savefig("src/data_distribution/plots/directcontacts_distribution.png")
+#
+# plotting test
+#
+uniqueitems = Dict{Int, Dict{Int, Int}}()
+
+for t=1:length(keys(distancewithinintervals))
+    values = get(distancewithinintervals, t, Array{Any, 1}())
+    u = unique(values)
+    d = Dict([(i, count(x -> x == i, values)) for i in u])
+
+    get!(uniqueitems, t, Dict{Int, Int}())
+
+    push!(
+        uniqueitems,
+        t => d
+    )
+end
+
+for elem in uniqueitems
+    println(elem)
+end

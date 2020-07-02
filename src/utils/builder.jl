@@ -128,6 +128,10 @@ function inithg(df::DataFrame, user2vertex::Dict{String, Int}, loc2he::Dict{Stri
     for checkin in eachrow(df)
         # if a user visits the same place in the same timeframe
         # only the timestamp of his/her last checkin is stored
+        if get(loc2he, checkin.venueid, -1) == -1
+            println(checkin.venueid)
+        end
+
         setindex!(
             h,
             Dates.value(checkin.UTCtime),  # checkin to store

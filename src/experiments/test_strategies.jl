@@ -9,7 +9,7 @@ using Statistics
 ########################
 
 # Simulation parameters
-fparams = "/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/configs/epidemic_control/imm_perc.csv"
+fparams = "src/experiments/configs/epidemic_control/imm_perc.csv"
 
 paramsdf = CSV.read(
             fparams;
@@ -66,6 +66,9 @@ for target in targets
 
         simulation_data = Dict{String,Array{Pair{String,Array{Float64,1}},1}}()
 
+        nodes_imm_strategy = target == "nodes" ? strategy : nothing
+        hes_imm_strategy = target == "hes" ? strategy : nothing
+
         for testtype in keys(test_data)
             for test in get(test_data, testtype, nothing)
                 to_print = string(
@@ -91,10 +94,9 @@ for target in targets
                         γₐ=test[:γₐ],
                         αₑ=test[:αₑ],
                         niter=1,
-                        output_path="/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/$(string(strategy))/$target/csv/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv",
-                        immunize_nodes=(target == "nodes"),
-                        immunize_hes=(target == "hes"),
-                        imm_strategy=strategy
+                        output_path="src/experiments/results/epidemic_control/$(string(strategy))/$target/csv/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv",
+                        nodes_imm_strategy=nodes_imm_strategy,
+                        hes_imm_strategy=hes_imm_strategy
                         )
 
                 # get the average over all iterations 
@@ -146,7 +148,7 @@ for target in targets
             end
             legend(labels, fontsize="large", ncol=2)
             plt.tight_layout(.5)
-            savefig("/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/$(string(strategy))/$target/plot/$(mytitle)")
+            savefig("src/experiments/results/epidemic_control/$(string(strategy))/$target/plot/$(mytitle)")
         end
 
         gcf()

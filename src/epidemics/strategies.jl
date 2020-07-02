@@ -1,9 +1,9 @@
 """
-    uniform(h)
+    uniform(h::Hypergraph)
 
 Select a random set of nodes to immunize
 """
-function uniform(h)
+function uniform(h::Hypergraph)
     n = nhv(h)
     Random.seed!(0)
     random_nodes = shuffle(1:n)
@@ -11,11 +11,11 @@ function uniform(h)
 end
 
 """
-    contacts_based(h)
+    contacts_based(h::Hypergraph)
 
 Select the nodes with the highest contacts number to immunize
 """
-function contacts_based(h)
+function contacts_based(h::Hypergraph)
     # Count nodes in the same hyperedges of `v`
     function countcontacts(h, v)
         contacts = []
@@ -31,7 +31,7 @@ function contacts_based(h)
 end
 
 """
-    centrality(h)
+    centrality(h::Hypergraph)
 
 Select the nodes with the highest centrality to immunize
 """
@@ -56,12 +56,12 @@ function centrality(h)
 end
 
 """
-    acquaintance(h)
+    acquaintance(h::Hypergraph)
 
 Select a fraction of nodes with at least a neighbour,
 choose one of their neighbours to immunize
 """
-function acquaintance(h)
+function acquaintance(h::Hypergraph)
     function hasNeighbours(h, node)
         for he in keys(gethyperedges(h, node))
             if length(getvertices(h, he)) >= 2

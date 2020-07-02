@@ -46,9 +46,8 @@ TVHSIS(
     niter::Int = 1,
     output_path::Union{AbstractString,Nothing} = nothing,
     α::Float64ₑ = 0.0,
-    immunize_nodes::Bool=false,
-    immunize_hes::Bool=false,
-    imm_strategy=nothing
+    nodes_imm_strategy=nothing,
+    hes_imm_strategy=nothing
 )
 
 Simulation process on TVH for the SIS model, considering direct and indirect contacts
@@ -72,9 +71,8 @@ function TVHSIS(
         niter::Int=1,
         output_path::Union{AbstractString,Nothing}=nothing,
         αₑ::Float64=0.0,
-        immunize_nodes::Bool=false,
-        immunize_hes::Bool=false,
-        imm_strategy=nothing
+        nodes_imm_strategy=nothing,
+        hes_imm_strategy=nothing
 )
 
     if isnothing(output_path)
@@ -190,15 +188,16 @@ function TVHSIS(
                 #     end
                 # end
 
-                if t == 30 && !(isnothing(imm_strategy))
-                    if immunize_nodes
-                        nodes_to_immunize = imm_strategy(h)
+                # if t == 30 && !(isnothing(imm_strategy))
+                if t == 30
+                    if !(isnothing(nodes_imm_strategy))
+                        nodes_to_immunize = nodes_imm_strategy(h)
                         limit = trunc(Int, length(nodes_to_immunize) * αₑ)
                         map(node -> vnextstatus[node] = 0, nodes_to_immunize[1:limit])
                         map(node -> nextistatus[node] = 1, nodes_to_immunize[1:limit])
                     end
-                    if immunize_hes
-                        hes_to_immunize = imm_strategy(dual(h))
+                    if !(isnothing(hes_imm_strategy))
+                        hes_to_immunize = hes_imm_strategy(dual(h))
                         limit = trunc(Int, length(hes_to_immunize) * αₑ)
                         map(he -> henextstatus[he] = 0, hes_to_immunize[1:limit])
                         map(he -> nextihestatus[he] = 1, hes_to_immunize[1:limit])

@@ -97,8 +97,7 @@ for testtype in keys(test_data)
                     αₑ=test[:αₑ],
                     niter=10,
                     output_path="src/experiments/results/epidemic_control/tags_immunization/partial/csv/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv",
-                    immunize_hes=true,
-                    imm_strategy=tags_strategy
+                    hes_imm_strategy=tags_strategy
                     )
 
             # get the average over all iterations 
@@ -110,7 +109,6 @@ for testtype in keys(test_data)
             ) 
 
         end
-
     end
 end
 

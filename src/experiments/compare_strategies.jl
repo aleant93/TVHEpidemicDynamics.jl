@@ -9,7 +9,7 @@ using Statistics
 ########################
 
 # Simulation parameters
-fparams = "/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/configs/epidemic_control/cmp_strat.csv"
+fparams = "src/experiments/configs/epidemic_control/cmp_strat.csv"
 
 paramsdf = CSV.read(
                 fparams;
@@ -69,6 +69,7 @@ for testtype in keys(test_data)
             )
         println(to_print)
 
+        # Execute the simulation first without immunization
         SIS_per_infected_sim =
                     TVHSIS(
                         df,
@@ -85,7 +86,7 @@ for testtype in keys(test_data)
                         γₐ=test[:γₐ],
                         αₑ=test[:αₑ],
                         niter=1,
-                        output_path="/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/nodes_vs_hes/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv"
+                        output_path="src/experiments/results/epidemic_control/nodes_vs_hes/partial/csv/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv"
                         )
 
         # get the average over all iterations 
@@ -96,72 +97,42 @@ for testtype in keys(test_data)
             "no control" => infected_distribution
         ) 
 
-        strategies = [uniform, contacts_based, acquaintance]
-        for s in strategies
-            SIS_per_infected_sim =
-                TVHSIS(
-                    df,
-                    intervals,
-                    node_index_map,
-                    he_index_map,
-                    convert(Dates.Millisecond, Dates.Minute(test[:δ]));
-                    Δ=test[:Δ],
-                    c=5, 
-                    βd=test[:βd],
-                    βᵢ=test[:βᵢ], 
-                    βₑ=test[:βₑ], 
-                    γₑ=test[:γₑ], 
-                    γₐ=test[:γₐ],
-                    αₑ=test[:αₑ],
-                    niter=1,
-                    output_path="/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/nodes_vs_hes/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv",
-                    immunize_nodes=true,
-                    immunize_hes=false,
-                    imm_strategy=s
-                    )
+        # Then apply each immunization strategy to nodes and hes
+        for target in ["nodes", "hes"]
+            for strategy in [uniform, contacts_based, acquaintance]
+                nodes_imm_strategy = target == "nodes" ? strategy : nothing
+                hes_imm_strategy = target == "hes" ? strategy : nothing
+
+                SIS_per_infected_sim =
+                    TVHSIS(
+                        df,
+                        intervals,
+                        node_index_map,
+                        he_index_map,
+                        convert(Dates.Millisecond, Dates.Minute(test[:δ]));
+                        Δ=test[:Δ],
+                        c=5,
+                        βd=test[:βd],
+                        βᵢ=test[:βᵢ],
+                        βₑ=test[:βₑ],
+                        γₑ=test[:γₑ],
+                        γₐ=test[:γₐ],
+                        αₑ=test[:αₑ],
+                        niter=1,
+                        output_path="src/experiments/results/epidemic_control/nodes_vs_hes/partial/csv/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv",
+                        nodes_imm_strategy=nodes_imm_strategy,
+                        hes_imm_strategy=hes_imm_strategy
+                        )
 
             # get the average over all iterations 
-            infected_distribution = mean(collect(values(SIS_per_infected_sim)))
+                infected_distribution = mean(collect(values(SIS_per_infected_sim)))
 
-            push!(
+                push!(
                 get!(simulation_data, testtype, Array{Dict{String,Array{Float64,1}},1}()),
-                # "nodes " * string(s) => infected_distribution
-                "nodes " * string(s) => infected_distribution
+                target * " " * string(strategy) => infected_distribution
             ) 
-
-            SIS_per_infected_sim =
-                TVHSIS(
-                    df,
-                    intervals,
-                    node_index_map,
-                    he_index_map,
-                    convert(Dates.Millisecond, Dates.Minute(test[:δ]));
-                    Δ=test[:Δ],
-                    c=5, 
-                    βd=test[:βd],
-                    βᵢ=test[:βᵢ], 
-                    βₑ=test[:βₑ], 
-                    γₑ=test[:γₑ], 
-                    γₐ=test[:γₐ],
-                    αₑ=test[:αₑ],
-                    niter=1,
-                    output_path="/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/nodes_vs_hes/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv",
-                    immunize_nodes=false,
-                    immunize_hes=true,
-                    imm_strategy=s
-                    )
-
-            # get the average over all iterations 
-            infected_distribution = mean(collect(values(SIS_per_infected_sim)))
-
-            push!(
-                get!(simulation_data, testtype, Array{Dict{String,Array{Float64,1}},1}()),
-                # "hes " * string(s) => infected_distribution
-                "hes " * string(s) => infected_distribution
-            ) 
-
+            end
         end
-
     end
 end
 
@@ -204,7 +175,7 @@ for test_type in keys(simulation_data)
     end
     legend(labels, fontsize="large", ncol=2)
     plt.tight_layout(.5)
-    savefig("/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/nodes_vs_hes/$(mytitle)")
+    savefig("src/experiments/results/epidemic_control/nodes_vs_hes/partial/plot/$(mytitle)")
 end
 
 gcf()

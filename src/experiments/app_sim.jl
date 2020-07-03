@@ -9,7 +9,7 @@ using Statistics
 ########################
 
 # Simulation parameters
-fparams = "/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/configs/epidemic_control/app_sim.csv"
+fparams = "src/experiments/configs/epidemic_control/app_sim.csv"
 
 paramsdf = CSV.read(
                 fparams;
@@ -85,10 +85,11 @@ for testtype in keys(test_data)
                         γₐ=test[:γₐ],
                         αₑ=test[:αₑ],
                         niter=1,
-                        output_path="/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/app_simulation/full/csv/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv"
+                        output_path="src/experiments/results/epidemic_control/app_simulation/csv/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv",
+                        app_sim=true
                         )
 
-            # get the average over all iterations 
+        # get the average over all iterations 
         infected_distribution = mean(collect(values(SIS_per_infected_sim)))
 
         push!(
@@ -137,7 +138,7 @@ for test_type in keys(simulation_data)
     end
     legend(labels, fontsize="large", ncol=2)
     plt.tight_layout(.5)
-    savefig("/home/antonio/Projects/TVHEpidemicDynamics.jl/src/experiments/results/epidemic_control/app_simulation/full/plot/$(mytitle)")
+    savefig("src/experiments/results/epidemic_control/app_simulation/plot/$(mytitle)")
 end
 
 gcf()

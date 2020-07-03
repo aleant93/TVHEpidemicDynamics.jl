@@ -47,7 +47,8 @@ TVHSIS(
     output_path::Union{AbstractString,Nothing} = nothing,
     α::Float64ₑ = 0.0,
     nodes_imm_strategy=nothing,
-    hes_imm_strategy=nothing
+    hes_imm_strategy=nothing,
+    app_sim::Bool=false
 )
 
 Simulation process on TVH for the SIS model, considering direct and indirect contacts
@@ -72,7 +73,8 @@ function TVHSIS(
         output_path::Union{AbstractString,Nothing}=nothing,
         αₑ::Float64=0.0,
         nodes_imm_strategy=nothing,
-        hes_imm_strategy=nothing
+        hes_imm_strategy=nothing,
+        app_sim::Bool=false
 )
 
     if isnothing(output_path)
@@ -134,7 +136,6 @@ function TVHSIS(
             push!(per_infected_sim, sum(vstatus) / length(vstatus))
 
             # immunization
-            # TODO immunization policies
             istatus = zeros(Int, numnodes)
             irand = rand(0:100, 1, numnodes)
 
@@ -143,17 +144,20 @@ function TVHSIS(
 
             nextistatus = copy(istatus)
             nextihestatus = copy(ihestatus)
-
-            # # A random set of nodes will start using the app
-            # Random.seed!(0)
-            # random_nodes = shuffle(1:numnodes)
-            # limit = trunc(Int, length(random_nodes) * αₑ)
-            # random_nodes = random_nodes[1:limit]
-            # # Keep track of the infected that a node may have been in contact with
-            # infected_contacts = Dict{Int,Array{Int,1}}()
-            # map(node -> infected_contacts[node] = [], random_nodes)
-            # # Nodes that can't spread the infection but can recover
-            # nodes_in_quarantine = Array{Int,1}()
+                    
+            # Eventually a random set of nodes will start using the tracking app
+            # at a certain time
+            if app_sim
+                Random.seed!(0)
+                random_nodes = shuffle(1:numnodes)
+                limit = trunc(Int, length(random_nodes) * αₑ)
+                random_nodes = random_nodes[1:limit]
+                # Keep track of the infected that a node may have been in contact with
+                infected_contacts = Dict{Int,Array{Int,1}}()
+                map(node -> infected_contacts[node] = [], random_nodes)
+                # Nodes that can't spread the infection but can recover
+                nodes_in_quarantine = Array{Int,1}()
+            end
 
             ################
             # SIMULATION
@@ -170,37 +174,43 @@ function TVHSIS(
                                     t  
                                 )   
 
-                # if t >= 30
-                #     # Find the infected who have been in contact with `node`
-                #     for node in random_nodes
-                #         neighbours = []
-                #         hyperedges = collect(keys(gethyperedges(h, node)))
-                #         for he in hyperedges
-                #             neighbours = union(neighbours, collect(keys(getvertices(h, he))))
-                #         end
-                #         infected_neighoburs = filter(neighbour -> vstatus[neighbour] == 1, neighbours)
-                #         infected_contacts[node] = union(infected_contacts[node], infected_neighoburs)
-                #         # Decide to quarantine
-                #         if rand(1)[1]  < 1 - ℯ^(-0.5 * length(infected_contacts[node]))
-                #             push!(nodes_in_quarantine, node)
-                #             continue
-                #         end
-                #     end
-                # end
-
-                # if t == 30 && !(isnothing(imm_strategy))
+                # At a specific time  
                 if t == 30
+                    # appy an immunization strategy, if any, over a percentage of nodes
                     if !(isnothing(nodes_imm_strategy))
                         nodes_to_immunize = nodes_imm_strategy(h)
                         limit = trunc(Int, length(nodes_to_immunize) * αₑ)
                         map(node -> vnextstatus[node] = 0, nodes_to_immunize[1:limit])
                         map(node -> nextistatus[node] = 1, nodes_to_immunize[1:limit])
                     end
+                    # appy an immunization strategy, if any, over a percentage of hes
                     if !(isnothing(hes_imm_strategy))
                         hes_to_immunize = hes_imm_strategy(dual(h))
                         limit = trunc(Int, length(hes_to_immunize) * αₑ)
                         map(he -> henextstatus[he] = 0, hes_to_immunize[1:limit])
                         map(he -> nextihestatus[he] = 1, hes_to_immunize[1:limit])
+                    end
+                end
+
+                if app_sim && t >= 30
+                    # For each app user
+                    for node in random_nodes
+                        # not in quarantine
+                        if !(node in nodes_in_quarantine)
+                            # find the infected who have been in the same place 
+                            neighbours = []
+                            hyperedges = collect(keys(gethyperedges(h, node)))
+                            for he in hyperedges
+                                neighbours = union(neighbours, collect(keys(getvertices(h, he))))
+                            end
+                            infected_neighoburs = filter(neighbour -> vstatus[neighbour] == 1, neighbours)
+                            infected_contacts[node] = union(infected_contacts[node], infected_neighoburs)
+                            # Possibly decide to quarantine
+                            if rand(1)[1]  < 1 - ℯ^(-0.5 * length(infected_contacts[node]))
+                                push!(nodes_in_quarantine, node)
+                                continue
+                            end
+                        end
                     end
                 end
 
@@ -262,10 +272,12 @@ function TVHSIS(
 
                     # If the location has at least two users
                     # and it is not infected, it may become contamined.
-                    # in_quarantine = filter(node -> node in nodes_in_quarantine, collect(keys(getvertices(h, he))))
-                    # presents = length(getvertices(h, he)) - length(in_quarantine)
-                    # if presents > 1 && hestatus[he] == 0
-                    if length(getvertices(h, he)) > 1 && hestatus[he] == 0
+                    presents = collect(keys(getvertices(h, he)))
+                    # Eventually discard nodes in quarantine
+                    if app_sim && t >= 30
+                        presents = filter(node -> !(node in nodes_in_quarantine), presents)
+                    end
+                    if length(presents) > 1 && hestatus[he] == 0
                         i = infected(h, he, vstatus, istatus)
                         if rand(1)[1] <  1 - ℯ^- (βₑ * f(i, c))
                             # the location is contaminated
@@ -285,30 +297,31 @@ function TVHSIS(
                     # an immunized user can't be infected
                     istatus[v] == 1 && continue
                     
-                    # v in nodes_in_quarantine && continue
-
                     # if the user is present in the current timeframe
                     if usersepoc[v] == 1
-                        i = 0
-                        for he in gethyperedges(h, v)
-                            for u in getvertices(h, he.first)
-                                if v != u.first
-                                    # if u and v have been together in the same place
-                                    # in a time interval less than δ
-                                    # then it counts ad a direct contact
-                                    if abs(h[v, he.first] - h[u.first, he.first]) <= δ.value
-                                        if vstatus[v] == 0
-                                            i += vstatus[u.first]
+                        # and eventually is not in quarantine
+                        if !(app_sim && t >= 30 && v in nodes_in_quarantine)
+                            i = 0
+                            for he in gethyperedges(h, v)
+                                for u in getvertices(h, he.first)
+                                    if v != u.first
+                                        # if u and v have been together in the same place
+                                        # in a time interval less than δ
+                                        # then it counts ad a direct contact
+                                        if abs(h[v, he.first] - h[u.first, he.first]) <= δ.value
+                                            if vstatus[v] == 0
+                                                i += vstatus[u.first]
+                                            end
+                                            avg_direct_contacts += 1
                                         end
-                                        avg_direct_contacts += 1
                                     end
                                 end
                             end
-                        end
-                        # a user becomes infected according to
-                        # the following probbaility
-                        if vstatus[v] == 0 && rand(1)[1] < 1 - ℯ^- (βd * i)
-                            vnextstatus[v] = 1
+                            # a user becomes infected according to
+                            # the following probability
+                            if vstatus[v] == 0 && rand(1)[1] < 1 - ℯ^- (βd * i)
+                                vnextstatus[v] = 1
+                            end
                         end
                     end
                 end
@@ -326,19 +339,19 @@ function TVHSIS(
                     if usersepoc[v] == 1
 
                         # if the user is healthy
-                        if vstatus[v] == 0
-                        # if vstatus[v] == 0 && !(v in nodes_in_quarantine)
-                            i = 0
-                            for he in gethyperedges(h, v)
-                                if length(getvertices(h, he.first)) > 1
-                                    if ihestatus[he.first] == 0
-                                        i += hestatus[he.first]
+                        # and eventually is not in quarantine
+                        if vstatus[v] == 0 && !(app_sim && t >= 30 && v in nodes_in_quarantine)
+                                i = 0
+                                for he in gethyperedges(h, v)
+                                    if length(getvertices(h, he.first)) > 1
+                                        if ihestatus[he.first] == 0
+                                            i += hestatus[he.first]
+                                        end
                                     end
                                 end
-                            end
-                            if rand(1)[1] < 1 - ℯ^-(βᵢ * f(i, c))
-                                vnextstatus[v] = 1
-                            end
+                                if rand(1)[1] < 1 - ℯ^-(βᵢ * f(i, c))
+                                    vnextstatus[v] = 1
+                                end
                         elseif rand(1)[1] < 1 - ℯ^- γₐ 
                                 # the user spontaneously returns healthy
                                 vnextstatus[v] = 0

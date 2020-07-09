@@ -1,11 +1,11 @@
-exp_id,data,label,pinf,c,Δ,δ,βd,βᵢ,βₑ,γₑ,γₐ,αₑ
-configuration1,adi,no control,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.0
-configuration1,adi,15% users,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.15
-configuration1,adi,30% users,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.30
-configuration1,adi,45% users,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.45
-configuration1,adi,60% users,20,5,4,1,0.2,0.1,0.06,0.06,0.1,0.60
-configuration2,adi,no control,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.0
-configuration2,adi,15% users,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.15
-configuration2,adi,30% users,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.30
-configuration2,adi,45% users,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.45
-configuration2,adi,60% users,20,5,4,1,0.8,0.4,0.26,0.06,0.1,0.60
+exp_id,data,label,pinf,c,βd,βᵢ,βₑ,γₑ,γₐ,αₑ
+configuration1,adi,no control,20,5,0.2,0.1,0.06,0.06,0.1,0.0
+configuration1,adi,15% users,20,5,0.2,0.1,0.06,0.06,0.1,0.15
+configuration1,adi,30% users,20,5,0.2,0.1,0.06,0.06,0.1,0.30
+configuration1,adi,45% users,20,5,0.2,0.1,0.06,0.06,0.1,0.45
+configuration1,adi,60% users,20,5,0.2,0.1,0.06,0.06,0.1,0.60
+configuration2,adi,no control,20,5,0.8,0.4,0.26,0.06,0.1,0.0
+configuration2,adi,15% users,20,5,0.8,0.4,0.26,0.06,0.1,0.15
+configuration2,adi,30% users,20,5,0.8,0.4,0.26,0.06,0.1,0.30
+configuration2,adi,45% users,20,5,0.8,0.4,0.26,0.06,0.1,0.45
+configuration2,adi,60% users,20,5,0.8,0.4,0.26,0.06,0.1,0.60

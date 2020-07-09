@@ -175,7 +175,7 @@ function TVHSIS(
                                 )   
 
                 # At a specific time  
-                if t == 30
+                if t == trunc(Int, length(intervals) / 2)
                     # appy an immunization strategy, if any, over a percentage of nodes
                     if !(isnothing(nodes_imm_strategy))
                         nodes_to_immunize = nodes_imm_strategy(h)
@@ -192,7 +192,7 @@ function TVHSIS(
                     end
                 end
 
-                if app_sim && t >= 30
+                if app_sim && t >= trunc(Int, length(intervals) / 2)
                     # For each app user
                     for node in random_nodes
                         # not in quarantine
@@ -274,7 +274,7 @@ function TVHSIS(
                     # and it is not infected, it may become contamined.
                     presents = collect(keys(getvertices(h, he)))
                     # Eventually discard nodes in quarantine
-                    if app_sim && t >= 30
+                    if app_sim && t >= trunc(Int, length(intervals) / 2)
                         presents = filter(node -> !(node in nodes_in_quarantine), presents)
                     end
                     if length(presents) > 1 && hestatus[he] == 0
@@ -300,7 +300,7 @@ function TVHSIS(
                     # if the user is present in the current timeframe
                     if usersepoc[v] == 1
                         # and eventually is not in quarantine
-                        if !(app_sim && t >= 30 && v in nodes_in_quarantine)
+                        if !(app_sim && t >= trunc(Int, length(intervals) / 2) && v in nodes_in_quarantine)
                             i = 0
                             for he in gethyperedges(h, v)
                                 for u in getvertices(h, he.first)
@@ -340,7 +340,7 @@ function TVHSIS(
 
                         # if the user is healthy
                         # and eventually is not in quarantine
-                        if vstatus[v] == 0 && !(app_sim && t >= 30 && v in nodes_in_quarantine)
+                        if vstatus[v] == 0 && !(app_sim && t >= trunc(Int, length(intervals) / 2) && v in nodes_in_quarantine)
                                 i = 0
                                 for he in gethyperedges(h, v)
                                     if length(getvertices(h, he.first)) > 1

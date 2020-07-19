@@ -1,0 +1,13 @@
+exp_id,data,label,pinf,c,Δ,δ,βd,βᵢ,βₑ,γₑ,γₐ,αᵥ,αₑ,lockdown,βₗ,nodes_imm_strategy,hes_imm_strategy,nodes_precomputed,hes_precomputed
+lockdown415,adi,Direct/Indirect-high,20,5,4,15,0.8,0.2,0.26,0.1,0.06,0.0,0.0,true,0.0,,,,
+lockdown415,lockdown-social,lockdown-social,20,5,4,15,0.8,0.2,0.26,0.1,0.06,0.0,0.0,true,0.0,,lockdown,,/home/alessia/github/03_code/TVHEpidemicDynamics.jl/src/experiments/journal/precomputed_data/lockdown/social_venues.data
+lockdown415,lockdown-work,lockdown-work,20,5,4,15,0.8,0.2,0.26,0.1,0.06,0.0,0.0,true,0.0,,lockdown,,/home/alessia/github/03_code/TVHEpidemicDynamics.jl/src/experiments/journal/precomputed_data/lockdown/work_venues.data
+lockdown415,lockdown-transp,lockdown-transp,20,5,4,15,0.8,0.2,0.26,0.1,0.06,0.0,0.0,true,0.0,,lockdown,,/home/alessia/github/03_code/TVHEpidemicDynamics.jl/src/experiments/journal/precomputed_data/lockdown/transportation_venues.data
+lockdown415,lockdown-union,lockdown-union,20,5,4,15,0.8,0.2,0.26,0.1,0.06,0.0,0.0,true,0.0,,lockdown,,/home/alessia/github/03_code/TVHEpidemicDynamics.jl/src/experiments/journal/precomputed_data/lockdown/union.data
+lockdown415,lockdown-all,lockdown-all,20,5,4,15,0.8,0.2,0.26,0.1,0.06,0.0,0.0,true,0.0,,lockdown,,/home/alessia/github/03_code/TVHEpidemicDynamics.jl/src/experiments/journal/precomputed_data/lockdown/all_venues.data
+lockdown1215,adi,Direct/Indirect-high,20,5,12,15,0.8,0.2,0.26,0.1,0.06,0.0,0.0,true,0.0,,,,
+lockdown1215,lockdown-social,lockdown-social,20,5,12,15,0.8,0.2,0.26,0.1,0.06,0.0,0.0,true,0.0,,lockdown,,/home/alessia/github/03_code/TVHEpidemicDynamics.jl/src/experiments/journal/precomputed_data/lockdown/social_venues.data
+lockdown1215,lockdown-work,lockdown-work,20,5,12,15,0.8,0.2,0.26,0.1,0.06,0.0,0.0,true,0.0,,lockdown,,/home/alessia/github/03_code/TVHEpidemicDynamics.jl/src/experiments/journal/precomputed_data/lockdown/work_venues.data
+lockdown1215,lockdown-transp,lockdown-transp,20,5,12,15,0.8,0.2,0.26,0.1,0.06,0.0,0.0,true,0.0,,lockdown,,/home/alessia/github/03_code/TVHEpidemicDynamics.jl/src/experiments/journal/precomputed_data/lockdown/transportation_venues.data
+lockdown1215,lockdown-union,lockdown-union,20,5,12,15,0.8,0.2,0.26,0.1,0.06,0.0,0.0,true,0.0,,lockdown,,/home/alessia/github/03_code/TVHEpidemicDynamics.jl/src/experiments/journal/precomputed_data/lockdown/union.data
+lockdown1215,lockdown-all,lockdown-all,20,5,12,15,0.8,0.2,0.26,0.1,0.06,0.0,0.0,true,0.0,,lockdown,,/home/alessia/github/03_code/TVHEpidemicDynamics.jl/src/experiments/journal/precomputed_data/lockdown/all_venues.data

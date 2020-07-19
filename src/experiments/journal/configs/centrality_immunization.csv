@@ -1,0 +1,8 @@
+exp_id,data,label,pinf,c,Δ,δ,βd,βᵢ,βₑ,γₑ,γₐ,αᵥ,αₑ,nodes_imm_strategy,hes_imm_strategy
+exp1,adi,Direct/Indirect-high,20,5,4,1,0.8,0.2,0.26,0.1,0.06,0.0,0.0,,
+exp1,adi,V-uniform-5,20,5,4,1,0.8,0.2,0.26,0.1,0.06,0.05,0.0,centrality,
+exp1,adi,V-uniform-15,20,5,4,1,0.8,0.2,0.26,0.1,0.06,0.15,0.0,centrality,
+exp1,adi,V-uniform-25,20,5,4,1,0.8,0.2,0.26,0.1,0.06,0.05,0.0,centrality,
+exp1,adi,E-uniform-5,20,5,4,1,0.8,0.2,0.26,0.1,0.06,0.0,0.05,,centrality
+exp1,adi,E-uniform-15,20,5,4,1,0.8,0.2,0.26,0.1,0.06,0.0,0.15,,centrality
+exp1,adi,E-uniform-25,20,5,4,1,0.8,0.2,0.26,0.1,0.06,0.0,0.25,,centrality

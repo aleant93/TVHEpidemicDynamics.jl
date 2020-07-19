@@ -1,4 +1,5 @@
 using TVHEpidemicDynamics
+using DataFrames
 using Dates
 using CSV
 using PyPlot
@@ -17,7 +18,7 @@ using Statistics
 
 # Simulation parameters
 # Section 5.3 - Direct vs Indirect contagions
-fparams = "src/experiments/AAMAS20/configs/53/aamas53.csv"
+fparams = "src/experiments/AAMAS20/configs/53/blebluetooth.csv"
 output_path = "src/experiments/AAMAS20/results/53"
 
 # Section 5.4 - Modeling the effect of time
@@ -47,14 +48,14 @@ end
 ########################
 
 # Foursqaure dataset
-dataset = "data/dataset_TSMC2014_TKY.txt"#"data/dataset_TSMC2014_TKY.txt"
-header = [:userid, :venueid, :catid, :catname, :lat, :lng, :timezoneoffset, :UTCtime]
-dateformat = "e u d H:M:S +0000 Y"
+dataset = "data/blebeacon/BLEBeacon-Dataset-master/Check-In Check-Out Report.csv"#"data/dataset_TSMC2014_TKY.txt"
+header = [:entry_id, :userid, :UTCtime, :out_time, :venueid]
+dateformat = "Y-m-d H:M:S"
 
 # The simulation will consider only the data
 # within this time intervals
-firstcheckindate = Dates.DateTime("2012-05-07T00:00:00")
-lastcheckindate = Dates.DateTime("2012-06-07T00:00:00")
+firstcheckindate = Dates.DateTime("2016-09-15T00:00:00")
+lastcheckindate = Dates.DateTime("2016-10-18T00:00:00")
 
 # The choice of the interval within which
 # either an indirect (Δ) or direct (δ) contact
@@ -87,6 +88,35 @@ for i in eachrow(intervals)
         :intervals => intervals,
         :user2vertex => user2vertex,
         :loc2he => loc2he,
+    )
+end
+
+
+
+#CHECKIN DISTRIBUTION OVER THE INTERVALS
+for key in keys(intervals_data)
+    i2c = Array{Int, 1}()
+    _intervals = intervals_data[key][:intervals]
+
+    for t in 1:length(_intervals)
+        mindate = get(_intervals, t, 0).first
+        maxdate = get(_intervals, t, 0).second
+
+        _df = filter(
+            r-> (isnothing(mindate) || r[:UTCtime] >= mindate) &&
+                (isnothing(maxdate) || r[:UTCtime] <= maxdate),
+                intervals_data[key][:df]
+        )
+
+        push!(
+            i2c,
+            nrow(_df)
+        )
+    end
+
+    push!(
+        get!(intervals_data, key, Array{Int, 1}()),
+        :checkins => i2c
     )
 end
 
@@ -124,6 +154,8 @@ end
 ########################
 simulation_data = Dict{String, Array{Pair{String, NamedTuple}, 1}}()
 
+infectedXloc_data = Dict{String, Any}()
+
 for testtype in keys(test_data)
     for test in get(test_data, testtype, nothing)
         to_print = string(
@@ -134,9 +166,9 @@ for testtype in keys(test_data)
 
         runningparams = get(intervals_data, "$(test[:Δ])$(test[:δ])", Dict{Symbol, Any}())
 
-        SIS_per_infected_sim =
+        SIS_per_infected_sim, infectedXloc =
             simulate(
-                SIS(),
+                TVHEpidemicDynamics.SIS_ble(),
                 get!(runningparams, :df, nothing),
                 get!(runningparams, :intervals, nothing),
                 get!(runningparams, :user2vertex, nothing),
@@ -160,8 +192,14 @@ for testtype in keys(test_data)
 
         push!(
             get!(simulation_data, testtype, Array{Dict{String, NamedTuple}, 1}()),
-            test[:label] => (infected_distribution = infected_distribution, Δ = test[:Δ], δ = test[:δ])
-        )
+            test[:label] => (
+                infected_distribution = infected_distribution,
+                Δ = test[:Δ],
+                δ = test[:δ],
+                ncheckins = intervals_data["$(test[:Δ])$(test[:δ])"][:checkins])
+            )
+
+        push!(infectedXloc_data, testtype => infectedXloc)
     end
 end
 
@@ -179,7 +217,10 @@ for test_type in keys(simulation_data)
     mytitle = "$(test_type)_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).png"
 
     clf()
-    figure(figsize=(7,4))
+    fig = plt.figure(figsize=(7,4))
+    ax = fig.add_subplot(111)
+
+    ncheckins = Array{Int, 1}()
 
     for exp in get!(simulation_data, test_type, Array{Float64, 1}())
         ylim(bottom=0.0)#, top=0.6)
@@ -202,10 +243,93 @@ for test_type in keys(simulation_data)
         if marker == 0
             marker = 1
         end
+
+        ncheckins = exp.second.ncheckins
     end
+
     legend(labels, fontsize="large", ncol=2)
+
+    # ax2 = ax.twinx()  # instantiate a second axes that shares the same x-axis
+
+    # color = "tab:blue"
+    # ax2.set_ylabel("Number of checkins", color=color)  # we already handled the x-label with ax1
+    # ax2.plot(ncheckins, color=color)
+    # ax2.tick_params(axis="y", labelcolor=color)
+    
     plt.tight_layout(.5)
     savefig("$(output_path)/plot/$(mytitle)")
 end
 
 gcf()
+
+
+
+#########################
+# Plotting new infected
+# per location per day
+########################
+using Serialization
+serialize("ble_data_heatmap.data", data_to_plot)
+
+data_to_plot = infectedXloc_data["exp415"]
+sim_data = intervals_data["415"]
+
+he2loc = Dict{Int, String}()
+
+for loc in keys(sim_data[:loc2he])
+    push!(
+        he2loc,
+        sim_data[:loc2he][loc] => (loc)
+    )
+end
+
+#00 01 02 30 31 25 29 08 13 28 24 23 27 26 22 14 15 16 17 18 19 20 21 03 04 06 07 08 09 10 11 12
+order = ["00" "01" "02" "30" "31" "25" "29" "08" "13" "28" "24" "23" "27" "26" "22" "14" "15" "16" "17" "18" "19" "20" "21" "03" "04" "05" "06" "07" "08" "09" "10" "11" "12"]
+_ids = ["rpi-$(id)" for id in order]
+
+ids = reverse(_ids, dims=2)
+
+_labels = ["00", "01", "02", "30", "31", "25", "29", "08", "13", "28", "24", "23", "27", "26", "22", "14", "15", "16", "17", "18", "19", "20", "21", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
+labels = ["rpi-$(id)" for id in reverse(_labels)]
+
+#days = ["$(index)" for (index,id) in sort!(collect(keys(data_to_plot[1][1])))]
+
+days = sort!(collect(keys(data_to_plot[1][1])))
+
+m = fill(0.0, length(ids), length(days))
+
+
+for he = 1:length(he2loc)
+    for day in days
+        val = 0.0
+        for iter in 1:10
+            val += data_to_plot[iter][he][day]
+        end
+        val != 0 && (val \= 10) > 0.0
+
+        print(findfirst(x -> x == day, days))
+        print( " idLoc ", he2loc[he])
+        println( "   indexLoc ", findfirst(x -> x == he2loc[he], ids)[2])
+
+        m[findfirst(x -> x == he2loc[he], ids)[2], findfirst(x -> x == day, days)] = val
+    end
+end
+
+m
+
+clf()
+fig = plt.figure(figsize=(10,10))
+ax = fig.add_subplot(111)
+
+#im = ax.imshow(m)
+im = ax.imshow(m, interpolation="gaussian")
+
+# # We want to show all ticks...
+yticks(0:length(ids)-1, labels)
+xticks(0:length(days)-1, days, rotation=80)
+
+gcf()
+
+plt.tight_layout(.5)
+savefig("heatmap.png")
+

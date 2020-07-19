@@ -17,7 +17,7 @@ using Statistics
 
 # Simulation parameters
 # Section 5.3 - Direct vs Indirect contagions
-fparams = "src/experiments/AAMAS20/configs/53/aamas53.csv"
+fparams = "src/experiments/AAMAS20/configs/53/blebluetooth.csv"
 output_path = "src/experiments/AAMAS20/results/53"
 
 # Section 5.4 - Modeling the effect of time
@@ -47,14 +47,14 @@ end
 ########################
 
 # Foursqaure dataset
-dataset = "data/dataset_TSMC2014_TKY.txt"#"data/dataset_TSMC2014_TKY.txt"
-header = [:userid, :venueid, :catid, :catname, :lat, :lng, :timezoneoffset, :UTCtime]
-dateformat = "e u d H:M:S +0000 Y"
+dataset = "data/blebeacon/BLEBeacon-Dataset-master/Check-In Check-Out Report.csv"#"data/dataset_TSMC2014_TKY.txt"
+header = [:entry_id, :userid, :UTCtime, :out_time, :venueid]
+dateformat = "Y-m-d H:M:S"
 
 # The simulation will consider only the data
 # within this time intervals
-firstcheckindate = Dates.DateTime("2012-05-07T00:00:00")
-lastcheckindate = Dates.DateTime("2012-06-07T00:00:00")
+firstcheckindate = Dates.DateTime("2016-09-14T00:00:00")
+lastcheckindate = Dates.DateTime("2016-10-19T00:00:00")
 
 # The choice of the interval within which
 # either an indirect (Δ) or direct (δ) contact
@@ -182,7 +182,7 @@ for test_type in keys(simulation_data)
     figure(figsize=(7,4))
 
     for exp in get!(simulation_data, test_type, Array{Float64, 1}())
-        ylim(bottom=0.0)#, top=0.6)
+        ylim(bottom=0.0, top=0.6)
         plot(exp.second.infected_distribution, linestyle=linestyles[linestyle], marker=markers[marker], markevery=10, markersize=6.5)
 
         xlabel("Time intervals", fontweight="semibold", labelpad=10, fontsize="x-large")

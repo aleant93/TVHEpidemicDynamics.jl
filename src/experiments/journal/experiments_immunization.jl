@@ -1,3 +1,5 @@
+using Pkg
+Pkg.activate(".")
 using TVHEpidemicDynamics
 using Dates
 using CSV
@@ -17,17 +19,23 @@ using Statistics
 
 # Simulation parameters
 # Section 5.3 - Direct vs Indirect contagions
-fparams = "src/experiments/AAMAS20/configs/53/aamas53.csv"
-output_path = "src/experiments/AAMAS20/results/53"
+fparams = "src/experiments/journal/configs/acquaintance_immunization.csv"
+output_path = "src/experiments/journal/results"
 
 # Section 5.4 - Modeling the effect of time
 #fparams = "src/experiments/AAMAS20/configs/54/aamas54.csv"
 #output_path = "src/experiments/AAMAS20/results/54"
 
+cols = [
+    :exp_id, :data, :label, :per_infected, :c,  :Δ, :δ ,:βd, :βᵢ, :βₑ,
+    :γₑ, :γₐ, :αᵥ, :αₑ, :lockdown, :βₗ,
+    :nodes_imm_strategy, :hes_imm_strategy, :nodes_prec, :hes_prec
+]
+
 paramsdf = CSV.read(
             fparams;
             copycols = true,
-            header = [:exp_id, :data, :label, :per_infected, :c,  :Δ, :δ ,:βd, :βᵢ, :βₑ, :γₑ, :γₐ],
+            header = cols,
             datarow = 2
         )
 
@@ -90,6 +98,7 @@ for i in eachrow(intervals)
     )
 end
 
+#intervals_data["41"][:intervals][29]
 
 #########################
 # Initialization of infected nodes
@@ -125,14 +134,27 @@ end
 simulation_data = Dict{String, Array{Pair{String, NamedTuple}, 1}}()
 
 for testtype in keys(test_data)
-    for test in get(test_data, testtype, nothing)
-        to_print = string(
-            "Experiment code = $(test[:exp_id]) | Configuration label = $(test[:label]) | Perc infected = $(test[:per_infected]) | ",
-            "Δ = $(test[:Δ]) | δ = $(test[:δ]) | βd = $(test[:βd]) | βᵢ = $(test[:βᵢ]) | βₑ = $(test[:βₑ]) | γₑ = $(test[:γₑ]) | γₐ = $(test[:γₐ])"
-        )
-        println(to_print)
+    for (index, test) in enumerate(get(test_data, testtype, nothing))
+
+        println("----------------EXP CONFIG-------------------------")
+        for property in propertynames(test)
+            print("$(property) = $(test[property])  |   ")
+        end
+        println("\n---------------------------------------------------")
 
         runningparams = get(intervals_data, "$(test[:Δ])$(test[:δ])", Dict{Symbol, Any}())
+
+        # immunization params
+        nodes_imm_strategy =
+            ismissing(test[:nodes_imm_strategy]) ? nothing : getfield(Main, Symbol(test[:nodes_imm_strategy]))
+
+        hes_imm_strategy =
+            ismissing(test[:hes_imm_strategy]) ? nothing : getfield(Main, Symbol(test[:hes_imm_strategy]))
+
+        nodes_kwargs =
+            ismissing(test[:nodes_prec]) ? Dict{}() : Dict{}(:path => test[:nodes_prec])
+        hes_kwargs =
+            ismissing(test[:hes_prec]) ? Dict{}() : Dict{}(:path => test[:hes_prec])
 
         SIS_per_infected_sim =
             simulate(
@@ -151,6 +173,15 @@ for testtype in keys(test_data)
                 βₑ = test[:βₑ],
                 γₑ = test[:γₑ],
                 γₐ = test[:γₐ],
+                αᵥ = test[:αᵥ],
+                αₑ = test[:αₑ],
+                lockdown = test[:lockdown],
+                βₗ = test[:βₗ],
+                imm_start = 29, #30
+                nodes_imm_strategy = nodes_imm_strategy,
+                hes_imm_strategy = hes_imm_strategy,
+                nodes_kwargs = nodes_kwargs,
+                hes_kwargs = hes_kwargs,
                 niter = 10,
                 output_path = "$(output_path)/csv/$(test[:exp_id])_$(test[:data])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv"
             )
@@ -182,7 +213,7 @@ for test_type in keys(simulation_data)
     figure(figsize=(7,4))
 
     for exp in get!(simulation_data, test_type, Array{Float64, 1}())
-        ylim(bottom=0.0)#, top=0.6)
+        ylim(bottom=0.0)#, top=0.7)
         plot(exp.second.infected_distribution, linestyle=linestyles[linestyle], marker=markers[marker], markevery=10, markersize=6.5)
 
         xlabel("Time intervals", fontweight="semibold", labelpad=10, fontsize="x-large")

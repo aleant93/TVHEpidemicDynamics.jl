@@ -22,7 +22,7 @@ export SIS_sanification, SIS_immuni
 export simulate_immuni
 
 export simulate
-export f, infected, qinfected
+export f, infected
 
 export generate_model_data
 export buildhg, generatehg!
@@ -35,7 +35,7 @@ include("utils/loader.jl")
 include("utils/builder.jl")
 include("utils/stats_utils.jl")
 
-include("epidemics/simulation_types.jl")
+include("epidemics/sim_types.jl")
 include("epidemics/sim_utils.jl")
 
 include("epidemics/SIS.jl")

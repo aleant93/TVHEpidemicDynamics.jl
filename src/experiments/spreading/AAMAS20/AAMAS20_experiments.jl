@@ -102,8 +102,8 @@ per_infected_data = Dict{Float64, Array{Int, 1}}()
 users = keys(intervals_data[collect(keys(intervals_data))[1]][:user2vertex])
 
 for p in eachrow(per_infected)
-    vstatus = rand(1:1, 1, length(users))
-    vrand = rand(Float64, (1, length(users)))
+    vstatus = fill(1, length(users))
+    vrand = rand(Float64, length(users))
 
     for i=1:length(users)
         if p.infected_percentage  <= vrand[i]
@@ -113,7 +113,7 @@ for p in eachrow(per_infected)
 
     push!(
         per_infected_data,
-        p.infected_percentage => vec(vstatus)
+        p.infected_percentage => vstatus
     )
 end
 

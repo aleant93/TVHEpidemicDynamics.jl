@@ -15,7 +15,7 @@ Populate a hypergraph `h` with checkin data from the dataframe `df`
 happening within `mindate` and `maxdate`.
 
 At the first step of the simulation, `h` is `nothing`. In this case,
-it initialize a new hypergraph `h`, where its vertices correspond to users in `user2vertex`
+it initializes a new hypergraph `h`, where its vertices correspond to users in `user2vertex`
 and its hyperedges to locations in `loc2he`. For each user, the timestamp of the last checkin
 he/she did in a given location is stored.
 
@@ -42,10 +42,9 @@ function generatehg!(
 )
 
     added, moved = 0, 0
-    vadded = rand(0:0, 1, length(keys(user2vertex)))
 
     # select only the current timeframe
-    currdf = filter(r->((r.UTCtime >= mindate) && (r.UTCtime < maxdate)), df)
+    currdf = filter(r->((r.timestamp >= mindate) && (r.timestamp < maxdate)), df)
 
     # initialize hg
     if isnothing(h)
@@ -83,7 +82,7 @@ function generatehg!(
         if t == 1 || all #just for debugging purposes
             setindex!(
                 h,
-                Dates.value(checkin.UTCtime), # checkin to store
+                Dates.value(checkin.timestamp), # checkin to store
                 get(user2vertex, string(checkin.userid), -1), # node id
                 get(loc2he, string(checkin.venueid), -1) # hyperedge id
             )
@@ -91,7 +90,7 @@ function generatehg!(
     end
 
     # number of newcoming users in the current timeframe
-    added = size(currdf)[1] - moved
+    added = nrow(currdf) - moved
 
     h, added, moved
 end
@@ -126,69 +125,22 @@ function inithg(df::DataFrame, user2vertex::Dict{String, Int}, loc2he::Dict{Stri
     end
 
     for checkin in eachrow(df)
-        # if a user visits the same place in the same timeframe
-        # only the timestamp of his/her last checkin is stored
+
+        # this should never happen
+        # the df is cleaned from missing data
         if get(loc2he, checkin.venueid, -1) == -1
             println(checkin.venueid)
         end
 
+        # if a user visits the same place in the same timeframe
+        # only the timestamp of his/her last checkin is stored
         setindex!(
             h,
-            Dates.value(checkin.UTCtime),  # checkin to store
+            Dates.value(checkin.timestamp),  # checkin to store
             get(user2vertex, string(checkin.userid), -1), # node id
             get(loc2he, checkin.venueid, -1) # hyperedge id
         )
     end
 
     h
-end
-
-
-"""
-Returns a hypergraph for a given set of vertices and hyperedges based on the time
-parameters.
-"""
-function buildhg(
-    df,
-    mindate,
-    maxdate,
-    δ,
-    user2vertex,
-    loc2he
-)
-
-    prevdf = filter(r->((r.UTCtime >= mindate - δ) && (r.UTCtime < mindate)), df)
-    currdf = filter(r->((r.UTCtime >= mindate) && (r.UTCtime < maxdate)), df)
-    nextdf = filter(r->((r.UTCtime >= maxdate)) && (r.UTCtime < maxdate + δ), df)
-
-    if size(currdf)[1] == 0
-        return nothing
-    end
-
-    enrichdf!(prevdf, currdf, δ)
-    enrichdf!(nextdf, currdf, δ)
-
-    h = inithg(currdf, user2vertex, loc2he)
-    h
-end
-
-
-"""
-Adds every checkin `c1` in `df1` to `df2` if any checkin `c2` in `df2` has been
-made in the same place of `c1` and in a close period of time
-"""
-function enrichdf!(df1, df2, δ)
-    toadd = Array{Any,1}()
-
-    for r1 in eachrow(df1)
-        for r2 in eachrow(df2)
-            if (r1.venueid == r2.venueid) && (abs(r1.UTCtime - r2.UTCtime) < δ)
-                push!(toadd, r1)
-            end
-        end
-    end
-
-    for row in toadd
-        push!(df2, row)
-    end
 end

@@ -117,5 +117,7 @@ function generate_model_data(
         end
     end
 
+    rename!(df, [userid => :userid, venueid => :venueid, timestamp => :timestamp])
+
     df, intervals, user2vertex, loc2he
 end

@@ -1,8 +1,6 @@
 """
-
-"""
-function simulate(
-        sim_type::SIS_ble,
+simulate(
+        sim_type::SIS_infected_loc,
         df::DataFrame,
         intervals::Dict{Int, Pair{DateTime, DateTime}},
         user2vertex::Dict{String, Int},
@@ -10,7 +8,7 @@ function simulate(
         δ::Dates.Millisecond;
         Δ::Union{Int,TimePeriod,Nothing} = nothing,
         vstatus::Union{Array{Int, 1}, Nothing} = nothing,
-        per_infected::Int = 20,
+        per_infected::Float64 = 0.2,
         c::Union{Int, Nothing} = 5,
         βd::Float64 = 0.2,
         βₑ::Float64 = 0.06,
@@ -27,7 +25,78 @@ function simulate(
         nodes_kwargs::Dict = Dict{}(),
         hes_kwargs::Dict = Dict{}(),
         niter::Int = 1,
-        output_path::Union{AbstractString, Nothing} = nothing
+        output_path::Union{AbstractString, Nothing} = nothing,
+        kwargs...
+)
+
+ Simulate a Susceptible-Infected-Susceptible diffusion model exploiting a
+ Time-Varying Hypergraph. An immunization strategy may be applied either
+ on vertices (i.e. people) and hyperedges (i.e. locations).
+
+ *Note*
+ It also evaluates the number of infected per each location per time interval.
+
+ **Arguments**
+ - `sim_type`, diffusion model to simulate;
+ - `df`, DataFrame containing check-in data;
+ - `intervals`, time intervals within which an indirect contact may happen;
+ - `user2vertex`, mapping from agent ids to vertex ids;
+ - `loc2he`, mapping from location ids to hyperedge ids;
+ - `δ`, time within which a direct contact may happen (expressed in milliseconds);
+ - `Δ`, time within which an indirect contact may happen (just for logging purposes);
+ - `vstatus`, initial status (susceptible or infected) for each node. If it not
+ given as input, it will be initialized in the simulation;
+ - `per_infected`, percetage of initial infected agents;
+ - `c`, factor bounding the probability to become infected when the number of
+ contact increases;
+ - `βd`, probability of becoming infected with a direct contact;
+ - `βₑ`, probability that a location is infected by an agent;
+ - `βᵢ`, probability of becoming infected with an indirect contact;
+ - `γₑ`, probability that a location spontaneously recovers;
+ - `γₐ`, probability that an agent spontaneously recovers;
+ - `αᵥ`, percentage of agents to immunize;
+ - `αₑ`, percentage of locations to santize;
+ - `lockdown`, whether applying a lockdown policy;
+ - `βₗ`, factor decreasing the probability that a sanitized location infects
+ an agent;
+ - `imm_start`, iteration from which the immunization phase takes place;
+ - `nodes_imm_strategy`, immunization strategy to apply to the agents;
+ - `hes_imm_strategy`, immunization strategy to apply to the hyperedges;
+ - `nodes_kwargs`, optional params for `nodes_imm_strategy`;
+ - `hes_kwargs`, optional params for `hes_imm_strategy`;
+ - `niter`, number of iteration the simulation is repeated;
+ - `output_path`, path where logs are stored;
+ - `kwargs`, other optional params.
+
+"""
+function simulate(
+        sim_type::SIS_infected_loc,
+        df::DataFrame,
+        intervals::Dict{Int, Pair{DateTime, DateTime}},
+        user2vertex::Dict{String, Int},
+        loc2he::Dict{String, Int},
+        δ::Dates.Millisecond;
+        Δ::Union{Int,TimePeriod,Nothing} = nothing,
+        vstatus::Union{Array{Int, 1}, Nothing} = nothing,
+        per_infected::Float64 = 0.2,
+        c::Union{Int, Nothing} = 5,
+        βd::Float64 = 0.2,
+        βₑ::Float64 = 0.06,
+        βᵢ::Float64 = 0.1,
+        γₑ::Float64 = 0.06,
+        γₐ::Float64 = 0.1,
+        αᵥ::Float64 = 0.0,
+        αₑ::Float64 = 0.0,
+        lockdown::Bool = false,
+        βₗ::Float64 = 0.0,
+        imm_start::Int = 0,
+        nodes_imm_strategy::Union{Function, Nothing} = nothing,
+        hes_imm_strategy::Union{Function, Nothing} = nothing,
+        nodes_kwargs::Dict = Dict{}(),
+        hes_kwargs::Dict = Dict{}(),
+        niter::Int = 1,
+        output_path::Union{AbstractString, Nothing} = nothing,
+        kwargs...
 )
 
     if isnothing(output_path)
@@ -40,13 +109,15 @@ function simulate(
 
     # iter -> percentage of infected users per simulation step
     to_return = Dict{Int, Array{Float64, 1}}()
-    to_return_infectedXloc = Dict{Int, Dict{Int, Dict{DateTime, Int}}}()
+
+    # iter => loc_id => (day, number of new infected)
+    to_return_infected_per_loc = Dict{Int, Dict{Int, Dict{DateTime, Int}}}()
 
     # evaluation of an initial vector of infected users
     # if it is not given as input
     if isnothing(vstatus)
         vstatus = fill(1, length(user2vertex))
-        vrand = rand(0:100, 1, length(user2vertex))
+        vrand = rand(Float64, length(user2vertex))
         for i=1:length(user2vertex)
             if per_infected  <= vrand[i]
                 vstatus[i] = 0
@@ -59,9 +130,10 @@ function simulate(
         write(
             fhandle,
             string(
-                "sim_step,Δ,δ,c,per_infected,βd,βₑ,βᵢ,γₑ,γₐ,avg_he_size,",
-                "avg_degree,avg_direct_contacts,new_users,",
-                "moved_users,perc_infected_users,perc_infected_locations\n"
+                "sim_step,Δ,δ,c,per_infected,βd,βₑ,βᵢ,γₑ,γₐ,αᵥ,αₑ,βₗ,",
+                "lockdown,imm_start,nodes_imm_strategy,hes_imm_strategy,",
+                "avg_he_size,avg_degree,avg_direct_contacts,new_agents,",
+                "moved_agents,perc_infected_agents,perc_infected_locations\n"
                 )
         )
         # for randomization purposes
@@ -89,9 +161,9 @@ function simulate(
             push!(per_infected_sim, sum(_vstatus) / length(_vstatus))
 
 
-            # clean the hashmap containing the 
+            # hashmap containing the
             # number of new infected per loc x day
-            infectedXloc = Dict{Int, Dict{DateTime, Int}}()
+            infected_per_loc = Dict{Int, Dict{DateTime, Int}}()
 
             #start from the first day
             day = get(intervals, 1, 0).first
@@ -99,8 +171,8 @@ function simulate(
             ################
             # IMMUNIZATION
             ################
-            istatus = rand(0:0, 1, length(user2vertex))
-            ihestatus = rand(0:0, 1, length(loc2he))
+            istatus = fill(0, length(user2vertex))
+            ihestatus = fill(0, length(loc2he))
 
             nextistatus = copy(istatus)
             nextihestatus = copy(ihestatus)
@@ -110,12 +182,12 @@ function simulate(
             ################
             for t=1:length(intervals)
 
-                # clean the hashmap containing the 
+                # clean the hashmap with the
                 # number of new infected per loc x day
-                if t % (ceil(Int, 24 / Δ)) == 0
+                if t % (ceil(Int, 24 / Δ)) == 1
                     day = get(intervals, t, 0).first
                 end
-                
+
                 h, added, moved = generatehg!(
                                     h,
                                     df,
@@ -207,9 +279,16 @@ function simulate(
                 # PHASE 1 - Agent-to-Environment
                 #
                 for he=1:nhe(h)
+                    # Initializing the number of new infected per location per day
+                    # and just copying it in the following iterations
+                    # (no new node gets infected in this phase)
                     push!(
-                        get!(infectedXloc, he, Dict{DateTime, Int}()),
-                        day => get!(get!(infectedXloc, he,  Dict{DateTime, Int}()), day, 0)
+                        get!(infected_per_loc, he, Dict{DateTime, Int}()),
+                        day => get!(
+                                get!(infected_per_loc, he,  Dict{DateTime, Int}()),
+                                day,
+                                0
+                            )
                     )
 
                     # If the location is immunized
@@ -256,17 +335,19 @@ function simulate(
                                     if abs(h[v, he.first] - h[u.first, he.first]) <= δ.value
                                         if _vstatus[v] == 0
                                             i += _vstatus[u.first]
+
                                             if _vstatus[u.first] == 1 && rand() < 1 - ℯ ^ - (βd)
                                                 vnextstatus[v] = 1
-                    
-                                                # a new sick node is added 
+
+                                                # a new sick node is added
                                                 # to each location the node has been
                                                 push!(
-                                                    get!(infectedXloc, he.first, Dict{DateTime, Int}()),
-                                                    day => get!(get!(infectedXloc, he.first,  Dict{DateTime, Int}()), day, 0) + 1
+                                                    get!(infected_per_loc, he.first, Dict{DateTime, Int}()),
+                                                    day =>
+                                                        get!(get!(infected_per_loc, he.first,  Dict{DateTime, Int}()), day, 0) + 1
                                                 )
                                                 break
-                                                
+
                                             end
                                         end
                                         avg_direct_contacts += 1
@@ -274,15 +355,6 @@ function simulate(
                                 end
                             end
                         end
-                       #=  # a user becomes infected according to
-                        # the following probbaility
-                        if _vstatus[v] == 0 && rand() < 1 - ℯ ^ - (βd * i)
-                            vnextstatus[v] = 1
-
-                            # a new sick node is added 
-                            # to each location the node has been
-                            
-                        end =#
                     end
                 end
 
@@ -312,29 +384,27 @@ function simulate(
                                 ihestatus[he.first] == 1 && lockdown && continue
 
                                 if length(getvertices(h, he.first)) > 1
-                                    if ihestatus[he.first] == 0
-                                        i += hestatus[he.first]
-                                        if hestatus[he.first] == 1 && rand() < 1 - ℯ ^ -((βᵢ))
-                                            vnextstatus[v] = 1
+                                    # if ihestatus[he.first] == 0
+                                    #     i += hestatus[he.first]
+                                    # else
+                                    #     i_immunized += hestatus[he.first]
+                                    # end
 
-                                            # a new sick node is added 
-                                            # to each location the node has been
-                                            push!(
-                                                get!(infectedXloc, he.first, Dict{DateTime, Int}()),
-                                                day => get!(get!(infectedXloc, he.first,  Dict{DateTime, Int}()), day, 0) + 1
-                                            )
-                                            
-                                            break
-                                        end
-                                    else
-                                        i_immunized += hestatus[he.first]
+                                    if hestatus[he.first] == 1 && rand() < 1 - ℯ ^ -(βᵢ * (1 - βₗ * ihestatus[he.first])) #1 - ℯ ^ -((βᵢ))
+                                        vnextstatus[v] = 1
+
+                                        # a new sick node is added
+                                        # to each location the node has been
+                                        push!(
+                                            get!(infected_per_loc, he.first, Dict{DateTime, Int}()),
+                                            day =>
+                                                get!(get!(infected_per_loc, he.first,  Dict{DateTime, Int}()), day, 0) + 1
+                                        )
+
+                                        break
                                     end
                                 end
                             end
-
-                          #=   if rand() < 1 - ℯ ^ -( (βᵢ * i) + ( (βᵢ * (1 - βₗ)) * i_immunized) )
-                                vnextstatus[v] = 1
-                            end =#
 
                         elseif rand() < 1 - ℯ ^ - γₐ
                             # the user spontaneously returns healthy
@@ -349,12 +419,12 @@ function simulate(
                 hestatus = copy(henextstatus)
                 ihestatus = copy(nextihestatus)
 
-                #push!(per_infected_sim, sum(_vstatus) / (length(_vstatus) - sum(istatus)))
                 push!(per_infected_sim, sum(_vstatus) / length(_vstatus))
 
 
                 to_write = string(
-                    "$(t),$(Δ),$(δ),$(c),$(per_infected),$(βd),$(βₑ),$(βᵢ),$(γₑ),$(γₐ),",
+                    "$(t),$(Δ),$(δ),$(c),$(per_infected),$(βd),$(βₑ),$(βᵢ),$(γₑ),$(γₐ),$(αᵥ),$(αₑ),$(βₗ),",
+                    "$(lockdown),$(imm_start),$(nodes_imm_strategy),$(hes_imm_strategy),",
                     "$(avg_he_size),$(avg_degree),$(avg_direct_contacts),$(added),$(moved),",
                     "$(sum(_vstatus)/length(_vstatus)),$(sum(hestatus)/length(hestatus))\n"
                     )
@@ -362,10 +432,10 @@ function simulate(
                 write(fhandle, to_write)
             end
 
-            push!(to_return, iter=>per_infected_sim)
-            push!(to_return_infectedXloc, iter => infectedXloc)
+            push!(to_return, iter => per_infected_sim)
+            push!(to_return_infected_per_loc, iter => infected_per_loc)
         end
     end
 
-    to_return, to_return_infectedXloc
+    to_return, to_return_infected_per_loc
 end

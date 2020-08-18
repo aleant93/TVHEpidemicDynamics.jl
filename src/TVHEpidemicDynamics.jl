@@ -17,9 +17,7 @@ export evaluate_location_distribution
 
 export Abstract_Simulation_Model
 export SIS, SIS_infected_loc
-export SIS_sanification, SIS_immuni
-
-export simulate_immuni
+export SIS_sanification, SIS_tracing
 
 export simulate
 export f, infected
@@ -41,7 +39,7 @@ include("epidemics/sim_utils.jl")
 include("epidemics/SIS.jl")
 include("epidemics/SIS_infected_loc.jl")
 
-include("epidemics/SIS_immuni.jl")
+include("epidemics/SIS_tracing.jl")
 include("epidemics/SIS_sanification.jl")
 
 include("epidemics/immunization_strategies.jl")

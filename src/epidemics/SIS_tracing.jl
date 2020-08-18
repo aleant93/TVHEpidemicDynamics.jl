@@ -1,7 +1,80 @@
 """
+    simulate(
+            sim_type::SIS,
+            df::DataFrame,
+            intervals::Dict{Int, Pair{DateTime, DateTime}},
+            user2vertex::Dict{String, Int},
+            loc2he::Dict{String, Int},
+            δ::Dates.Millisecond;
+            Δ::Union{Int,TimePeriod,Nothing} = nothing,
+            vstatus::Union{Array{Int, 1}, Nothing} = nothing,
+            per_infected::Float64 = 0.2,
+            c::Union{Int, Nothing} = 5,
+            βd::Float64 = 0.2,
+            βₑ::Float64 = 0.06,
+            βᵢ::Float64 = 0.1,
+            γₑ::Float64 = 0.06,
+            γₐ::Float64 = 0.1,
+            αᵥ::Union{Int, Float64} = 0.0,
+            αₑ::Union{Int, Float64} = 0.0,
+            lockdown::Bool = false,
+            βₗ::Union{Int, Float64} = 0.0,
+            imm_start::Int = 0,
+            nodes_imm_strategy::Union{Function, Nothing} = nothing,
+            hes_imm_strategy::Union{Function, Nothing} = nothing,
+            nodes_kwargs::Dict = Dict{}(),
+            hes_kwargs::Dict = Dict{}(),
+            niter::Int = 1,
+            output_path::Union{AbstractString, Nothing} = nothing,
+            kwargs...
+    )
+
+ Simulate a Susceptible-Infected-Susceptible diffusion model exploiting a
+ Time-Varying Hypergraph. An immunization strategy may be applied either
+ on vertices (i.e. people) and hyperedges (i.e. locations).
+
+ **Note**
+ It implements a contact tracing mechanism accoring to which an agent decides
+ to put itself in quarantine with a probability proportional to the number
+ of its infected contacts.
+
+ **Arguments**
+ - `sim_type`, diffusion model to simulate;
+ - `df`, DataFrame containing check-in data;
+ - `intervals`, time intervals within which an indirect contact may happen;
+ - `user2vertex`, mapping from agent ids to vertex ids;
+ - `loc2he`, mapping from location ids to hyperedge ids;
+ - `δ`, time within which a direct contact may happen (expressed in milliseconds);
+ - `Δ`, time within which an indirect contact may happen (just for logging purposes);
+ - `vstatus`, initial status (susceptible or infected) for each node. If it not
+ given as input, it will be initialized in the simulation;
+ - `per_infected`, percetage of initial infected agents;
+ - `c`, factor bounding the probability to become infected when the number of
+ contact increases;
+ - `βd`, probability of becoming infected with a direct contact;
+ - `βₑ`, probability that a location is infected by an agent;
+ - `βᵢ`, probability of becoming infected with an indirect contact;
+ - `γₑ`, probability that a location spontaneously recovers;
+ - `γₐ`, probability that an agent spontaneously recovers;
+ - `αᵥ`, percentage of agents to immunize;
+ - `αₑ`, percentage of locations to santize;
+ - `lockdown`, whether applying a lockdown policy;
+ - `βₗ`, factor decreasing the probability that a sanitized location infects
+ an agent;
+ - `imm_start`, iteration from which the immunization phase takes place;
+ - `nodes_imm_strategy`, immunization strategy to apply to the agents;
+ - `hes_imm_strategy`, immunization strategy to apply to the hyperedges;
+ - `nodes_kwargs`, optional params for `nodes_imm_strategy`;
+ - `hes_kwargs`, optional params for `hes_imm_strategy`;
+ - `niter`, number of iteration the simulation is repeated;
+ - `output_path`, path where logs are stored;
+ - `kwargs`, other optional params:
+    - `app_strategy::Function`, select which agents tracks its contacts
+    - `αᵢ`::Union{Int, Float64}, proportion of the agents using the tracing policy 
 
 """
-function simulate_immuni(
+function simulate(
+        sim_type::SIS_tracing,
         df::DataFrame,
         intervals::Dict{Int, Pair{DateTime, DateTime}},
         user2vertex::Dict{String, Int},
@@ -9,26 +82,25 @@ function simulate_immuni(
         δ::Dates.Millisecond;
         Δ::Union{Int,TimePeriod,Nothing} = nothing,
         vstatus::Union{Array{Int, 1}, Nothing} = nothing,
-        per_infected::Int = 20,
+        per_infected::Float64 = 0.2,
         c::Union{Int, Nothing} = 5,
         βd::Float64 = 0.2,
         βₑ::Float64 = 0.06,
         βᵢ::Float64 = 0.1,
         γₑ::Float64 = 0.06,
         γₐ::Float64 = 0.1,
-        αᵥ::Float64 = 0.0,
-        αₑ::Float64 = 0.0,
-        αᵢ::Float64 = 0.0,
+        αᵥ::Union{Int, Float64} = 0.0,
+        αₑ::Union{Int, Float64} = 0.0,
         lockdown::Bool = false,
-        βₗ::Float64 = 0.0,
+        βₗ::Union{Int, Float64} = 0.0,
         imm_start::Int = 0,
-        app_strategy::Union{Function, Nothing} = nothing,
         nodes_imm_strategy::Union{Function, Nothing} = nothing,
         hes_imm_strategy::Union{Function, Nothing} = nothing,
         nodes_kwargs::Dict = Dict{}(),
         hes_kwargs::Dict = Dict{}(),
         niter::Int = 1,
-        output_path::Union{AbstractString, Nothing} = nothing
+        output_path::Union{AbstractString, Nothing} = nothing,
+        kwargs...
 )
 
     if isnothing(output_path)
@@ -39,6 +111,7 @@ function simulate_immuni(
         output_path = "results/$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv"
     end
 
+
     # iter -> percentage of infected users per simulation step
     to_return = Dict{Int, Array{Float64, 1}}()
 
@@ -46,7 +119,7 @@ function simulate_immuni(
     # if it is not given as input
     if isnothing(vstatus)
         vstatus = fill(1, length(user2vertex))
-        vrand = rand(0:100, 1, length(user2vertex))
+        vrand = rand(Float64, length(user2vertex))
         for i=1:length(user2vertex)
             if per_infected  <= vrand[i]
                 vstatus[i] = 0
@@ -59,9 +132,10 @@ function simulate_immuni(
         write(
             fhandle,
             string(
-                "sim_step,Δ,δ,c,per_infected,βd,βₑ,βᵢ,γₑ,γₐ,avg_he_size,",
-                "avg_degree,avg_direct_contacts,new_users,",
-                "moved_users,perc_infected_users,perc_infected_locations\n"
+                "sim_step,Δ,δ,c,per_infected,βd,βₑ,βᵢ,γₑ,γₐ,αᵥ,αₑ,βₗ,αᵢ",
+                "lockdown,imm_start,app_strategy,nodes_imm_strategy,hes_imm_strategy,",
+                "avg_he_size,avg_degree,avg_direct_contacts,new_agents,",
+                "moved_agents,perc_infected_agents,perc_infected_locations\n"
                 )
         )
         # for randomization purposes
@@ -91,8 +165,8 @@ function simulate_immuni(
             ################
             # IMMUNIZATION
             ################
-            istatus = rand(0:0, 1, length(user2vertex))
-            ihestatus = rand(0:0, 1, length(loc2he))
+            istatus = fill(0, length(user2vertex))
+            ihestatus = fill(0, length(loc2he))
 
             nextistatus = copy(istatus)
             nextihestatus = copy(ihestatus)
@@ -189,8 +263,8 @@ function simulate_immuni(
                         map(he -> nextihestatus[he] = 1, to_immunize)
                     end
 
-                    if !isnothing(app_strategy)
-                        u2trace = app_strategy(h, αᵥ; nodes_kwargs...)
+                    if !isnothing(kwargs[:app_strategy])
+                        u2trace = kwargs[:app_strategy](h, kwargs[:αᵢ]; nodes_kwargs...)
                         map(user -> to_trace[user] = Set{Int}(), u2trace)
                         users_to_trace = keys(to_trace)
                     end
@@ -199,6 +273,9 @@ function simulate_immuni(
 
                 ########################
                 # TRACING
+                # If an agent is not in quarentine yet,
+                # it may enter the quarantine with a probability
+                # proportional to the number of infected contacts.
                 ########################
                 for v in users_to_trace
                     if quarantine[v] == 0
@@ -230,7 +307,7 @@ function simulate_immuni(
                     # If the location has at least two users
                     # and it is not infected, it may become contamined.
                     if length(getvertices(h, he)) > 1 && hestatus[he] == 0
-                        i = qinfected(h, he, _vstatus, istatus, quarantine)
+                        i = infected(h, he, _vstatus, istatus; quarantine = quarantine)
                         if rand() <  1 - ℯ ^ - (βₑ * f(i, c))
                             # the location is contaminated
                             henextstatus[he] = 1
@@ -351,7 +428,8 @@ function simulate_immuni(
                 push!(per_infected_sim, sum(_vstatus) / length(_vstatus))
 
                 to_write = string(
-                    "$(t),$(Δ),$(δ),$(c),$(per_infected),$(βd),$(βₑ),$(βᵢ),$(γₑ),$(γₐ),",
+                    "$(t),$(Δ),$(δ),$(c),$(per_infected),$(βd),$(βₑ),$(βᵢ),$(γₑ),$(γₐ),$(αᵥ),$(αₑ),$(βₗ),$(kwargs[:αᵢ])",
+                    "$(lockdown),$(imm_start),$(kwargs[:app_strategy]),$(nodes_imm_strategy),$(hes_imm_strategy),",
                     "$(avg_he_size),$(avg_degree),$(avg_direct_contacts),$(added),$(moved),",
                     "$(sum(_vstatus)/length(_vstatus)),$(sum(hestatus)/length(hestatus))\n"
                     )

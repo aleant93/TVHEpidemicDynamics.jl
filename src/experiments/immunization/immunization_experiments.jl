@@ -19,7 +19,7 @@ using Statistics
 project_path = dirname(pathof(TVHEpidemicDynamics))
 
 fparams =
-    joinpath(project_path, "experiments", "immunization", "configs", "acquaintance_immunization.json")
+    joinpath(project_path, "experiments", "immunization", "configs", "lockdown_sanification_immunization.json")
 
 #
 #FOURSQUARE

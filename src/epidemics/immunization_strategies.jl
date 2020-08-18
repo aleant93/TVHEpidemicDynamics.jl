@@ -1,3 +1,9 @@
+"""
+    uniform(h::Hypergraph, α::Float64; kwargs...)
+
+ Select a random sample of `α` nodes or `α` hyperdeges of the
+ hypergraph `h` to immunize.
+"""
 function uniform(h::Hypergraph, α::Float64; kwargs...)
     rng = MersenneTwister(1234)
     to_return = shuffle!(rng, collect(1:nhv(h)))
@@ -5,6 +11,15 @@ function uniform(h::Hypergraph, α::Float64; kwargs...)
 end
 
 
+
+"""
+    degrees(h::Hypergraph, α::Float64; kwargs...)
+
+ Select `α` nodes or `α` hyperdeges of the hypergraph `h` to immunize
+ according to their degree in `h`.
+
+ The algorithm selects `α` nodes with the higher degree.
+"""
 function degrees(h::Hypergraph, α::Float64; kwargs...)
     d = [length(gethyperedges(h, v)) for v in 1:nhv(h)]
 
@@ -13,7 +28,16 @@ function degrees(h::Hypergraph, α::Float64; kwargs...)
 end
 
 
-function centrality(h::Hypergraph, α::Float64)
+
+"""
+    centrality(h::Hypergraph, α::Float64; kwargs...)
+
+ Select `α` nodes or `α` hyperdeges of the hypergraph `h` to immunize
+ according to their betweeness centrality in `h`.
+
+ The algorithm selects `α` nodes with the higher bc values.
+"""
+function centrality(h::Hypergraph, α::Float64; kwargs...)
     m = SimpleHypergraphs.adjacency_matrix(h; s=2)
 
     g = LightGraphs.SimpleGraph(m)
@@ -24,6 +48,15 @@ function centrality(h::Hypergraph, α::Float64)
 end
 
 
+
+"""
+    random_walk(h::Hypergraph, α::Float64; kwargs...)
+
+ Select `α` nodes or `α` hyperdeges of the hypergraph `h` to immunize
+ according to their random walk centrality in `h`.
+
+ The algorithm selects `α` nodes with the higher rw values.
+"""
 function random_walk(h::Hypergraph, α::Float64; kwargs...)
     rwc = Dict{Int, Int}(v => 0 for v in 1:nhv(h))
 
@@ -39,6 +72,14 @@ function random_walk(h::Hypergraph, α::Float64; kwargs...)
 end
 
 
+
+"""
+    acquaintance(h::Hypergraph, α::Float64; kwargs...)
+
+ Select `α` nodes or `α` hyperdeges of the hypergraph `h` to immunize
+ according to the acquaintance strategy. It also makes use of local
+ knowledge selecting the neighbor with higher degree.
+"""
 function acquaintance(h::Hypergraph, α::Float64; kwargs...)
     rng = MersenneTwister(1234)
     nodes = shuffle!(rng, collect(1:nhv(h)))
@@ -69,6 +110,12 @@ function acquaintance(h::Hypergraph, α::Float64; kwargs...)
 end
 
 
-function lockdown(h::Hypergraph, α::Float64; kwargs...)
+
+"""
+    lockdown(h::Hypergraph, α::Union{Int, Float64}; kwargs...)
+
+ Close all location indicated in `kwargs[:path]`.
+"""
+function lockdown(h::Hypergraph, α::Union{Int, Float64}; kwargs...)
     return deserialize(kwargs[:path])
 end

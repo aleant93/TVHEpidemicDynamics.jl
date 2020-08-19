@@ -11,7 +11,8 @@ using Statistics
 
 """
     Experiments on the efficacy of:
-    - sanitazing daily all locations
+    - implementing social distancing (in terms of reduced access)
+    - implementing the closing of common rooms within places
 """
 
 ############################
@@ -23,11 +24,21 @@ project_path = dirname(pathof(TVHEpidemicDynamics))
 output_path = joinpath(project_path, "experiments", "immunization", "ble", "results")
 
 fparams =
-    joinpath(project_path, "experiments", "immunization", "ble", "configs", "blebluetooth_sanification.json")
+    joinpath(project_path, "experiments", "spreading", "ble", "configs", "blebluetooth.json")
 
+#
+# REDUCED PEOPLE
+# less people can access to the building
+#
 fdata_params =
-    joinpath(project_path, "experiments", "spreading", "ble", "configs", "blebluetooth_dataset.json")
+    joinpath(project_path, "experiments", "immunization", "ble", "configs", "blebluetooth_social_distancing_dataset.json")
 
+#
+# CLOSED ROOMS
+# there are few closed rooms in which people cannot access
+#
+fdata_params =
+    joinpath(project_path, "experiments", "immunization", "ble", "configs", "blebluetooth_closed_rooms_dataset.json")
 
 jtable = jsontable(read(open(fparams, "r")))
 paramsdf = DataFrame(jtable)
@@ -97,7 +108,7 @@ users = keys(intervals_data[collect(keys(intervals_data))[1]][:user2vertex])
 
 for p in eachrow(per_infected)
     vstatus = fill(1, length(users))
-    vrand = rand(Float64, length(users))
+    vrand = rand(Float64, (1, length(users)))
 
     for i=1:length(users)
         if p.infected_percentage  <= vrand[i]
@@ -134,11 +145,9 @@ for testtype in keys(test_data)
         res_path =
             joinpath(output_path, "csv", "$(test[:exp_id])_$(test[:exp])_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).csv")
 
-        # create dict with other params
-
         SIS_per_infected_sim =
             simulate(
-                SIS_sanification(),
+                SIS(),
                 get!(runningparams, :df, nothing),
                 get!(runningparams, :intervals, nothing),
                 get!(runningparams, :user2vertex, nothing),
@@ -153,9 +162,8 @@ for testtype in keys(test_data)
                 βₑ = test[:βₑ],
                 γₑ = test[:γₑ],
                 γₐ = test[:γₐ],
-                niter = 1,
-                output_path = res_path,
-                Dict{}(:sanitize => test[:sanitize])...
+                niter = 10,
+                output_path = res_path
             )
 
         # get the average over all iterations
@@ -208,7 +216,7 @@ for test_type in keys(simulation_data)
     end
     legend(labels, fontsize="large", ncol=2)
     plt.tight_layout(.5)
-    savefig("$(output_path)/plot/$(mytitle)")
+    savefig("$(output_path)/plot/environment/$(mytitle)")
 end
 
 gcf()

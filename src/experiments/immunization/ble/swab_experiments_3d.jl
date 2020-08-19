@@ -8,10 +8,10 @@ using JSON3
 using JSONTables
 using PyPlot
 using Statistics
+using Serialization
 
 """
-    Experiments on the efficacy of:
-    - sanitazing daily all locations
+    Experiments on the efficacy of using instant swabs
 """
 
 ############################
@@ -23,7 +23,7 @@ project_path = dirname(pathof(TVHEpidemicDynamics))
 output_path = joinpath(project_path, "experiments", "immunization", "ble", "results")
 
 fparams =
-    joinpath(project_path, "experiments", "immunization", "ble", "configs", "blebluetooth_sanification.json")
+    joinpath(project_path, "experiments", "immunization", "ble", "configs", "blebluetooth_swabs_3d.json")
 
 fdata_params =
     joinpath(project_path, "experiments", "spreading", "ble", "configs", "blebluetooth_dataset.json")
@@ -119,6 +119,9 @@ end
 # Simulation
 ########################
 simulation_data = Dict{String, Array{Pair{String, NamedTuple}, 1}}()
+people_to_check = deserialize(joinpath("data", "blebeacon", "people_to_check.data"))
+
+swabs_data = Dict{Int, Array{Float64, 1}}()
 
 for testtype in keys(test_data)
     for test in get(test_data, testtype, nothing)
@@ -138,7 +141,7 @@ for testtype in keys(test_data)
 
         SIS_per_infected_sim =
             simulate(
-                SIS_sanification(),
+                SIS_swabs(),
                 get!(runningparams, :df, nothing),
                 get!(runningparams, :intervals, nothing),
                 get!(runningparams, :user2vertex, nothing),
@@ -155,11 +158,13 @@ for testtype in keys(test_data)
                 γₐ = test[:γₐ],
                 niter = 10,
                 output_path = res_path,
-                Dict{}(:sanitize => test[:sanitize])...
+                Dict{}(:n_swabs => test[:n_swabs], :people_per_day => people_to_check)...
             )
 
         # get the average over all iterations
         infected_distribution = mean(collect(values(SIS_per_infected_sim)))
+
+        push!(swabs_data, test[:n_swabs] => infected_distribution)
 
         push!(
             get!(simulation_data, testtype, Array{Dict{String, NamedTuple}, 1}()),
@@ -170,45 +175,24 @@ end
 
 
 #########################
-# Plotting infected ditribution
+# Plotting a surface
+# with percentage of infected users
+# per timeframe
+# based on the number of swabs used
 ########################
-linestyles = ["solid", "dashed", "dashdot", "dotted"]
-markers = ["", "", "", "", "x", "+"]
+using Plots;
+pyplot()
 
-for test_type in keys(simulation_data)
-    linestyle = 1
-    marker = 1
-    labels = Array{String, 1}()
-    mytitle = "$(test_type)_$(Dates.format(now(), "Y-mm-ddTHH-MM-SS")).png"
+# x = range(-2,stop=2,length=100)
+# y = range(sqrt(2),stop=2,length=100)
+#
+# f(x,y) = x*y-x-y+1
 
-    clf()
-    figure(figsize=(7,4))
+x = range(1, stop = length(swabs_data[0]))
+y = range(0, stop = length(swabs_data) - 1)
 
-    for exp in get!(simulation_data, test_type, Array{Float64, 1}())
-        ylim(bottom=0.0)#, top=0.6)
-        plot(exp.second.infected_distribution, linestyle=linestyles[linestyle], marker=markers[marker], markevery=10, markersize=6.5)
+f_infected(x, y) = swabs_data[y][x]
 
-        xlabel("Time intervals", fontweight="semibold", labelpad=10, fontsize="x-large")
-        ylabel("Δ = $(exp.second.Δ) hours \n Infected nodes in %", fontweight="semibold", fontsize="x-large", labelpad=10)
-        title("δ = $(exp.second.δ) minutes", pad=10, fontweight="semibold", fontsize="x-large")
+Plots.plot(x, y, f_infected, st=:surface, camera=(200, 30))
 
-        tick_params(labelsize="large")
-
-        push!(labels, exp.first)
-
-        linestyle = (linestyle + 1) % (length(linestyles)+1)
-        marker = (marker + 1) % (length(markers)+1)
-
-        if linestyle == 0
-            linestyle = 1
-        end
-        if marker == 0
-            marker = 1
-        end
-    end
-    legend(labels, fontsize="large", ncol=2)
-    plt.tight_layout(.5)
-    savefig("$(output_path)/plot/$(mytitle)")
-end
-
-gcf()
+Plots.savefig(joinpath(output_path, "plot", "swabs.png"))

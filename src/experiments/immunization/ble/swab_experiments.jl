@@ -8,10 +8,10 @@ using JSON3
 using JSONTables
 using PyPlot
 using Statistics
+using Serialization
 
 """
-    Experiments on the efficacy of:
-    - sanitazing daily all locations
+    Experiments on the efficacy of using instant swabs
 """
 
 ############################
@@ -23,7 +23,7 @@ project_path = dirname(pathof(TVHEpidemicDynamics))
 output_path = joinpath(project_path, "experiments", "immunization", "ble", "results")
 
 fparams =
-    joinpath(project_path, "experiments", "immunization", "ble", "configs", "blebluetooth_sanification.json")
+    joinpath(project_path, "experiments", "immunization", "ble", "configs", "blebluetooth_swabs.json")
 
 fdata_params =
     joinpath(project_path, "experiments", "spreading", "ble", "configs", "blebluetooth_dataset.json")
@@ -119,6 +119,7 @@ end
 # Simulation
 ########################
 simulation_data = Dict{String, Array{Pair{String, NamedTuple}, 1}}()
+people_to_check = deserialize(joinpath("data", "blebeacon", "people_to_check.data"))
 
 for testtype in keys(test_data)
     for test in get(test_data, testtype, nothing)
@@ -138,7 +139,7 @@ for testtype in keys(test_data)
 
         SIS_per_infected_sim =
             simulate(
-                SIS_sanification(),
+                SIS_swabs(),
                 get!(runningparams, :df, nothing),
                 get!(runningparams, :intervals, nothing),
                 get!(runningparams, :user2vertex, nothing),
@@ -155,7 +156,7 @@ for testtype in keys(test_data)
                 γₐ = test[:γₐ],
                 niter = 10,
                 output_path = res_path,
-                Dict{}(:sanitize => test[:sanitize])...
+                Dict{}(:n_swabs => test[:n_swabs], :people_per_day => people_to_check)...
             )
 
         # get the average over all iterations
@@ -208,7 +209,7 @@ for test_type in keys(simulation_data)
     end
     legend(labels, fontsize="large", ncol=2)
     plt.tight_layout(.5)
-    savefig("$(output_path)/plot/$(mytitle)")
+    savefig("$(output_path)/plot/swabs/$(mytitle)")
 end
 
 gcf()

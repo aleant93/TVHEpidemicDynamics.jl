@@ -9,6 +9,7 @@ using LinearAlgebra
 using Random
 using SimpleHypergraphs
 using Serialization
+using StatsBase
 
 export find_intervals, evaluate_checkin_density
 export evaluate_checkins_distribution
@@ -18,6 +19,7 @@ export evaluate_location_distribution
 export Abstract_Simulation_Model
 export SIS, SIS_infected_loc
 export SIS_sanification, SIS_tracing
+export SIS_swabs
 
 export simulate
 export f, infected
@@ -41,6 +43,7 @@ include("epidemics/SIS_infected_loc.jl")
 
 include("epidemics/SIS_tracing.jl")
 include("epidemics/SIS_sanification.jl")
+include("epidemics/SIS_swabs.jl")
 
 include("epidemics/immunization_strategies.jl")
 

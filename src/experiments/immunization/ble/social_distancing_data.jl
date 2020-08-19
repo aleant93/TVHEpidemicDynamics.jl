@@ -142,8 +142,8 @@ people_to_check = Dict{DateTime, Array{String, 1}}()
 for i in 1:length(intervals)
 
     _df = filter(
-        r-> (r[Symbol(data_params.UTCtime)] >= intervals[i].first) &&
-            (r[Symbol(data_params.UTCtime)] <= intervals[i].second),
+        r-> (r[:timestamp] >= intervals[i].first) &&
+            (r[:timestamp] <= intervals[i].second),
             df
     )
 
@@ -158,12 +158,12 @@ using Serialization
 serialize("people_to_check.data", people_to_check)
 
 _df = filter(
-    r-> (r[Symbol(data_params.UTCtime)] >= intervals[1].first) &&
-        (r[Symbol(data_params.UTCtime)] <= intervals[1].second),
+    r-> (r[:timestamp] >= intervals[1].first) &&
+        (r[:timestamp] <= intervals[1].second),
         df
 )
 
 user_groups = groupby(_df, Symbol(data_params.userid))
 
-data = sort!(_df, [order(:userid), :UTCtime])
+data = sort!(_df, [order(:userid), :timestamp])
 data[data[:userid] .== 0, :]

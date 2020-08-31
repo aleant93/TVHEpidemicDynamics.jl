@@ -1,0 +1,7 @@
+exp_id,data,label,pinf,c,Δ,δ,βd,βᵢ,βₑ,γₑ,γₐ
+exp1,adi,Direct/Indirect-low,20,5,4,1,0.2,0.1,0.06,0.1,0.06
+exp1,adi,Direct/Indirect-high,20,5,4,1,0.8,0.2,0.26,0.1,0.06
+exp1,ad,Direct-low,20,5,4,1,0.2,0,0,0,0.06
+exp1,ad,Direct-high,20,5,4,1,0.8,0,0,0,0.06
+exp1,ai,Indirect-low,20,5,4,1,0,0.1,0.06,0.1,0.06
+exp1,ai,Indirect-high,20,5,4,1,0,0.2,0.26,0.1,0.06

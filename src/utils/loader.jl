@@ -48,6 +48,7 @@ function generate_model_data(
 
     # remove all rows without a timestamp
     df = dropmissing(df, timestamp)
+    df = dropmissing(df)
 
     # filter out all the rows not in the
     # timeframe to consider
@@ -115,6 +116,8 @@ function generate_model_data(
             index += 1
         end
     end
+
+    rename!(df, [userid => :userid, venueid => :venueid, timestamp => :timestamp])
 
     df, intervals, user2vertex, loc2he
 end
